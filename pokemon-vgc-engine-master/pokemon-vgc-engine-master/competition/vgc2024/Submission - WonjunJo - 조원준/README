@@ -1,0 +1,5 @@
+There are 2 files.
+The first file, MyBattlePolicies.py, contains WonjunBattlePolicy(BattlePolicy) and WonjunCompetitor(Competitor).
+This MyBattlePolicies.py should be in the same agent dictionary as Example_Competitor.py.
+The second file, MyRemoteCompetitor.py, is a copy of Example_RemoteCompetitor.py, and WonjunCompetitor
+from MyBattlePolicies is inserted instead of ExampleCompetitor from Example_Competitor.

@@ -1,0 +1,14 @@
+Hello thanks in advance for running this competition 
+
+
+My Competition and my remote competitor dont need any changes. The important part 
+is that MyBattlePolicy gets imported in the Competitior part. To do so you can copy the battlePolicy "KidMeBot" into your BattlePolicy file. 
+That file needs to be imported in my "MyCompetitor". Its important that the paths are the same as in the git project. then this line should work: 
+"from vgc.behaviour.BattlePolicies import KidMeBot". 
+
+The MyCompetitorMR file needs to be in the agent folder, cause i import it in the MyRemoteCompetitorMR from there with this line: "from agent.MyCompetitorMR import KidMeCompetitor"
+
+That should be everything to include my RemoteCompetitor 
+
+Best regards 
+Martin

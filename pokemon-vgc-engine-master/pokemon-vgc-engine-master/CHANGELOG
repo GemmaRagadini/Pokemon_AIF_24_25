@@ -1,0 +1,44 @@
+## Changelog
+
+### Version 3.0.x (October 2023)
+
+* Minor bug fixed in tree championship structure (3.0.1)
+* Minor bug fixed in PkmBattleEnv where speed change only affected one of the trainers (3.0.2)
+* Minor bug fixed in standard moves where one of the names would print wrongly (3.0.2)
+* Minor bug fixed in PkmBattleEnv where burned and frozen status where not implemented (3.0.3)
+* Minor bug fixed in PkmBattleEnv where StringShot/hail effect did not work and frozen status did not work (3.0.4)
+* Bug fixed in Elo not working properly (3.0.5.1)
+* Bug fixed in TunedTreeSearch (3.0.5.2)
+* Bug fixed in Elo not working properly (3.0.5.3)
+* Fixed team prediction (3.0.5.4)
+* Fixed team hazard damage on faint (3.0.5.5)
+* Fixed random team battles tree championship for battle track (3.0.5.6)
+* Fixed elo from Championship Track main script (3.0.5.7)
+
+### Version 2.2.1 (October 2023)
+
+1. Added Setup.py for easy installation of vgc.
+2. Fixed minor bugs.
+3. Fixed some baseline BattlePolicies.
+
+### Version 2.2.0 (July 2023)
+
+1. Fixed an issue for the Battle Track where pairings were done wrongly and random teams were not used.
+
+### Version 2.1.0 (July 2022)
+
+1. Optimized team build flow with adapted API.
+2. Added more team build agents with examples.
+
+### Version 2.0.0 (June 2022)
+
+1. Removed views data structure, game state can now be queried directly instead.
+2. Minor bugs fixed.
+3. Added more baseline agents.
+
+## Installation
+
+1. Install Python 3.6.8 or higher.
+2. Clone this project.
+3. Install the requirements.txt
+4. Use you preferred Interactive Development Environment.
