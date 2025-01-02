@@ -22,7 +22,7 @@ def main():
     #     cm = CompetitorManager(ExampleCompetitor("Player %d" % i))
     #     cm.team = RandomTeamFromRoster(roster).get_team()
     #     le.register(cm)
-    le.run(10)
+    le.run(1)
 
 
 if __name__ == '__main__':
