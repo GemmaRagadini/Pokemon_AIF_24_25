@@ -5,7 +5,7 @@ from vgc.ecosystem.BattleEcosystem import BattleEcosystem
 from vgc.util.generator.PkmRosterGenerators import RandomPkmRosterGenerator
 from vgc.util.generator.PkmTeamGenerators import RandomTeamFromRoster
 
-N_PLAYERS = 16
+N_PLAYERS = 2
 
 
 def main():

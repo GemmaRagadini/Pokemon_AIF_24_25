@@ -18,3 +18,8 @@ Su due terminali:
 3. export PYTHONPATH=$PYTHONPATH:/home/gemmaraga/Desktop/AIF/Pokemon_AIF_24_25/pokemon-vgc-engine-master
 4. python3 PkmBattleClientTest.py 
    python3 python3 PkmBattleUX.py
+
+
+### Aggiornamento ambiente 
+1. deactivate 
+2. source amb/bin/activate
