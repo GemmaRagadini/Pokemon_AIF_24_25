@@ -8,7 +8,6 @@ Qui si trovano le regole del gioco.
 .Pensare ad una nuova politica di gioco.
 
 .Iniziare a scrivere il competitor. 
-
 (cose da fare scritte in maniera coarse grained andare più nel dettaglio)
 
 ## Come lanciare (Gemma) 
