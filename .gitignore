@@ -1,0 +1,33 @@
+amb/# Cartelle virtual environment
+venv/
+.venv/
+
+# File e cartelle generate automaticamente da Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# File di configurazione per IDE o editor
+.vscode/
+.idea/
+
+# File e cartelle di build
+build/
+dist/
+*.egg-info/
+
+# Log e file temporanei
+*.log
+*.tmp
+*.bak
+
+# File di sistema (Windows, macOS, ecc.)
+.DS_Store
+Thumbs.db
+
+# File specifici del tuo progetto
+amb/
+
+# File di esempio o configurazioni temporanee
+.env
