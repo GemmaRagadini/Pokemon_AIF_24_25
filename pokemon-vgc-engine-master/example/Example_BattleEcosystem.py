@@ -1,3 +1,4 @@
+import time
 from Example_Competitor import ExampleCompetitor, MyCompetitor
 from vgc.balance.meta import StandardMetaData
 from vgc.competition.Competitor import CompetitorManager
@@ -22,8 +23,13 @@ def main():
     #     cm = CompetitorManager(ExampleCompetitor("Player %d" % i))
     #     cm.team = RandomTeamFromRoster(roster).get_team()
     #     le.register(cm)
-    le.run(1)
-
+     # Misurazione del tempo di esecuzione
+    start_time = time.time()
+    le.run(10)
+    end_time = time.time()
+    
+    # Stampa del tempo impiegato
+    print(f"Tempo impiegato: {end_time - start_time:.2f} secondi")
 
 if __name__ == '__main__':
     main()

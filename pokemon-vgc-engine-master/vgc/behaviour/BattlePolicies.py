@@ -496,7 +496,7 @@ class MyMinimax(BattlePolicy):
         
         :param g: Lo stato corrente del gioco.
         :param depth: La profondità corrente nella ricerca.
-        :param is_maximizing_player: True se il giocatore corrente massimizza il punteggio, False se lo minimizza.
+        :param is_maximizing_player: True se il giocatore corrente è MAX, False se è MIN.
         :return: (valutazione, azione migliore)
         """
         if depth == 0:
@@ -508,10 +508,9 @@ class MyMinimax(BattlePolicy):
             best_action = None
             for i in range(DEFAULT_N_ACTIONS):
                 g_copy = deepcopy(g)
-                s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida
-                # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
-                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
-                    continue
+                s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida,che non cambia la situazione
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]): 
+                    continue # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
                 eval_score, _ = self.minimax(s[0], depth - 1, False)
                 if eval_score > max_eval:
                     max_eval = eval_score
@@ -543,3 +542,70 @@ class MyMinimax(BattlePolicy):
         _, best_action = self.minimax(g, self.max_depth, True)
         return best_action if best_action is not None else 0
 
+
+
+
+class MyMinimaxWithAlphaBeta(BattlePolicy):
+    def __init__(self, max_depth: int = 4):
+        self.max_depth = max_depth
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        """
+        Algoritmo Minimax con Alpha-Beta Pruning.
+
+        :param g: Lo stato corrente del gioco.
+        :param depth: La profondità corrente nella ricerca.
+        :param alpha: Il valore massimo che il giocatore MAX garantisce finora.
+        :param beta: Il valore minimo che il giocatore MIN garantisce finora.
+        :param is_maximizing_player: True se il giocatore corrente è MAX, False se è MIN.
+        :return: (valutazione, azione migliore)
+        """
+        if depth == 0:
+            # Valuta lo stato corrente.
+            return game_state_eval(g, depth), None
+
+        if is_maximizing_player:
+            max_eval = float('-inf')
+            best_action = None
+            for i in range(DEFAULT_N_ACTIONS):
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida.
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]): 
+                    continue  # Ignora stati in cui i nostri Pokémon sconfitti aumentano.
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_action = i
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break  # Potatura beta
+            return max_eval, best_action
+
+        else:  # Avversario minimizzante
+            min_eval = float('inf')
+            best_action = None
+            for j in range(DEFAULT_N_ACTIONS):
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, j])  # Il giocatore non cambia azione.
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue  # Ignora stati in cui i Pokémon sconfitti dell'avversario aumentano.
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_action = j
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break  # Potatura alpha
+            return min_eval, best_action
+
+    def get_action(self, g) -> int:
+        """
+        Trova la migliore azione da intraprendere per il giocatore massimizzante.
+
+        :param g: Lo stato corrente del gioco.
+        :return: L'azione migliore da eseguire.
+        """
+        _, best_action = self.minimax(g, self.max_depth, float('-inf'), float('inf'), True)
+        return best_action if best_action is not None else 0

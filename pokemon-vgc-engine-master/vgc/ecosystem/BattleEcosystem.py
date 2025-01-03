@@ -41,6 +41,7 @@ class BattleEcosystem:
     def run(self, n_epochs: int):
         epoch = 0
         while epoch < n_epochs:
+            print(f"Epoch {epoch + 1} of {n_epochs}")  # Stampa il numero dell'epoca corrente
             self.__run_matches(self.__schedule_matches())
             epoch += 1
         self.print_results()  # Stampa i risultati dopo tutti gli epoch
