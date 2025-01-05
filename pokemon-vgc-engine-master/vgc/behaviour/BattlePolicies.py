@@ -4,7 +4,7 @@ from threading import Thread, Event
 from tkinter import CENTER, DISABLED, NORMAL
 from types import CellType
 from typing import List
-
+from random import random
 import numpy as np
 from customtkinter import CTk, CTkButton, CTkRadioButton, CTkLabel
 
@@ -12,7 +12,7 @@ from vgc.behaviour import BattlePolicy
 from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE, TYPE_CHART_MULTIPLIER, DEFAULT_N_ACTIONS
 from vgc.datatypes.Objects import GameState, PkmTeam
 from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition
-
+import math
 
 class RandomPlayer(BattlePolicy):
     """
@@ -609,3 +609,137 @@ class MyMinimaxWithAlphaBeta(BattlePolicy):
         """
         _, best_action = self.minimax(g, self.max_depth, float('-inf'), float('inf'), True)
         return best_action if best_action is not None else 0
+
+
+
+class MyMonteCarlo(BattlePolicy):
+    def __init__(self, max_iterations: int = 1000, exploration_weight: float = 1.41):
+        """
+        Inizializza la politica Monte Carlo Tree Search (MCTS).
+
+        :param max_iterations: Numero massimo di iterazioni per MCTS.
+        :param exploration_weight: Peso per il termine di esplorazione (valore di C).
+        """
+        self.max_iterations = max_iterations
+        self.exploration_weight = exploration_weight
+
+    def mcts(self, g, root_player: int):
+        """
+        Implementa il processo di Monte Carlo Tree Search.
+
+        :param g: Lo stato corrente del gioco.
+        :param root_player: Il giocatore per cui stiamo cercando la migliore azione.
+        :return: La migliore azione da eseguire.
+        """
+        # Nodo radice
+        root = Node(state=deepcopy(g), parent=None, player=root_player)
+
+        for _ in range(self.max_iterations):
+            leaf = self._select(root)
+            simulation_result = self._simulate(leaf.state, leaf.player)
+            self._backpropagate(leaf, simulation_result)
+
+        # Scegli la migliore azione dalla radice
+        best_child = max(root.children, key=lambda child: child.visits)
+        return best_child.action
+
+    def _select(self, node):
+        """
+        Seleziona un nodo utilizzando UCT (Upper Confidence Bound for Trees).
+
+        :param node: Il nodo corrente.
+        :return: Il nodo foglia selezionato.
+        """
+        while node.children:
+            node = max(node.children, key=lambda child: self._uct(child))
+        if not node.is_fully_expanded():
+            return self._expand(node)
+        return node
+
+    def _expand(self, node):
+        """
+        Espande il nodo generando un nuovo figlio.
+
+        :param node: Il nodo corrente.
+        :return: Il nuovo nodo figlio.
+        """
+        untried_actions = node.get_untried_actions()
+        action = random.choice(untried_actions)
+        new_state, _, _, _, _ = deepcopy(node.state).step([action, 99])  # Azione avversario non valida
+        child_node = Node(state=new_state, parent=node, player=1 - node.player, action=action)
+        node.children.append(child_node)
+        return child_node
+
+    def _simulate(self, state, player):
+        """
+        Esegue una simulazione casuale a partire da uno stato.
+
+        :param state: Lo stato iniziale della simulazione.
+        :param player: Il giocatore corrente.
+        :return: Il risultato della simulazione.
+        """
+        g_copy = deepcopy(state)
+        while not g_copy.is_terminal():
+            action = random.randint(0, DEFAULT_N_ACTIONS - 1)
+            g_copy.step([action, 99])  # Simulazione casuale
+        return self._evaluate(g_copy, player)
+
+    def _evaluate(self, state, player):
+        """
+        Valuta lo stato finale per un giocatore specifico.
+
+        :param state: Lo stato finale.
+        :param player: Il giocatore da valutare.
+        :return: Un valore di ricompensa per il giocatore.
+        """
+        return game_state_eval(state, player)
+
+    def _backpropagate(self, node, result):
+        """
+        Propaga i risultati della simulazione verso la radice.
+
+        :param node: Il nodo corrente.
+        :param result: Il risultato della simulazione.
+        """
+        while node:
+            node.visits += 1
+            node.value += result if node.player == node.parent.player else -result
+            node = node.parent
+
+    def _uct(self, node):
+        """
+        Calcola l'Upper Confidence Bound per un nodo.
+
+        :param node: Il nodo per cui calcolare UCT.
+        :return: Il valore UCT del nodo.
+        """
+        if node.visits == 0:
+            return float('inf')  # Esplora nodi non visitati
+        return (node.value / node.visits +
+                self.exploration_weight * math.sqrt(math.log(node.parent.visits) / node.visits))
+
+    def get_action(self, g) -> int:
+        """
+        Trova la migliore azione utilizzando MCTS.
+
+        :param g: Lo stato corrente del gioco.
+        :return: L'azione migliore da eseguire.
+        """
+        return self.mcts(g, root_player=0)
+
+class Node:
+    def __init__(self, state, parent, player, action=None):
+        self.state = state
+        self.parent = parent
+        self.player = player
+        self.action = action
+        self.children = []
+        self.visits = 0
+        self.value = 0
+
+    def is_fully_expanded(self):
+        return len(self.get_untried_actions()) == 0
+
+    def get_untried_actions(self):
+        # Ottiene le azioni possibili dallo stato
+        return [i for i in range(DEFAULT_N_ACTIONS)]

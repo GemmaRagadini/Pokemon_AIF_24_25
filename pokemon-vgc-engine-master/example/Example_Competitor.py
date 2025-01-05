@@ -1,5 +1,5 @@
 from vgc.behaviour import BattlePolicy, TeamSelectionPolicy, TeamBuildPolicy
-from vgc.behaviour.BattlePolicies import RandomPlayer, TerminalPlayer, MyMinimax, MyMinimaxWithAlphaBeta
+from vgc.behaviour.BattlePolicies import RandomPlayer, TerminalPlayer, MyMinimax, MyMinimaxWithAlphaBeta, MyMonteCarlo
 from vgc.behaviour.TeamBuildPolicies import TerminalTeamBuilder, RandomTeamBuilder
 from vgc.behaviour.TeamSelectionPolicies import FirstEditionTeamSelectionPolicy
 from vgc.competition.Competitor import Competitor
@@ -9,7 +9,7 @@ class MyCompetitor(Competitor):
 
     def __init__(self, name: str = "My Example"):
         self._name = name
-        self._battle_policy =  MyMinimaxWithAlphaBeta()
+        self._battle_policy =  MyMonteCarlo()
         self._team_selection_policy = FirstEditionTeamSelectionPolicy()
         self._team_build_policy = RandomTeamBuilder()
 
@@ -60,8 +60,8 @@ class TerminalExampleCompetitor(ExampleCompetitor):
     def __init__(self, name: str = "TerminalPlayer"):
         super().__init__(name)
         self._battle_policy = TerminalPlayer()
-        self._team_selection_policy = TeamSelectionPolicy()
-        self._team_build_policy = TerminalTeamBuilder()
+        self._team_selection_policy = FirstEditionTeamSelectionPolicy()
+        self._team_build_policy = RandomTeamBuilder()
 
     @property
     def name(self):

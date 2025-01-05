@@ -1,5 +1,5 @@
 import time
-from Example_Competitor import ExampleCompetitor, MyCompetitor
+from Example_Competitor import ExampleCompetitor, MyCompetitor, TerminalExampleCompetitor
 from vgc.balance.meta import StandardMetaData
 from vgc.competition.Competitor import CompetitorManager
 from vgc.ecosystem.BattleEcosystem import BattleEcosystem
