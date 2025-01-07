@@ -166,6 +166,19 @@ def game_state_eval(s: GameState, depth):
     opp = s.teams[1].active
     return mine.hp / mine.max_hp - 3 * opp.hp / opp.max_hp - 0.3 * depth
 
+# def game_state_eval(s: GameState, depth):
+#     mine = s.teams[0].active
+#     opp = s.teams[1].active
+#     # Punti vita relativi (bilanciati)
+#     hp_score = (mine.hp / mine.max_hp) - (opp.hp / opp.max_hp)
+#     # Penalità per profondità (ricompensa azioni rapide)
+#     depth_penalty = -0.3 * depth
+#     # Considera i Pokémon svenuti (vantaggio numerico)
+#     fainted_score = len(s.teams[1].bench) - len(s.teams[0].bench)
+#     # Punteggio finale con pesi aggiustati
+#     return hp_score + 0.5 * fainted_score + depth_penalty
+
+
 
 class BreadthFirstSearch(BattlePolicy):
     """
@@ -743,3 +756,208 @@ class Node:
     def get_untried_actions(self):
         # Ottiene le azioni possibili dallo stato
         return [i for i in range(DEFAULT_N_ACTIONS)]
+
+
+class MyMonteCarloWithMinimax(BattlePolicy):
+    def __init__(self, max_iterations: int = 200, exploration_weight: float = 1.8, minimax_depth: int = 5, dynamic_minimax: bool = True):
+        """
+        Inizializza la politica ibrida MCTS + Minimax con valutazione dinamica.
+
+        :param max_iterations: Numero massimo di iterazioni per MCTS.
+        :param exploration_weight: Peso per il termine di esplorazione (valore di C).
+        :param minimax_depth: Profondità massima per Minimax (default).
+        :param dynamic_minimax: Abilita/disabilita la valutazione dinamica della profondità di Minimax.
+        """
+        self.max_iterations = max_iterations
+        self.exploration_weight = exploration_weight
+        self.minimax_depth = minimax_depth
+        self.dynamic_minimax = dynamic_minimax
+
+    def get_dynamic_minimax_depth(self, num_promising_nodes):
+        """
+        Determina la profondità dinamica di Minimax in base al numero di nodi promettenti.
+
+        :param num_promising_nodes: Numero di nodi promettenti da analizzare.
+        :return: Profondità di Minimax regolata dinamicamente.
+        """
+        if not self.dynamic_minimax:
+            return self.minimax_depth
+
+        base_depth = self.minimax_depth
+        if num_promising_nodes <= 2:
+            return base_depth + 2  # Più profondità se pochi nodi
+        elif num_promising_nodes <= 5:
+            return base_depth + 1  # Lieve aumento di profondità
+        else:
+            return base_depth  # Usa profondità predefinita
+
+    def mcts(self, g, root_player: int):
+        """
+        Implementa il processo di Monte Carlo Tree Search (MCTS).
+        """
+        root = Node(state=deepcopy(g), parent=None, player=root_player)
+
+        for _ in range(self.max_iterations):
+            leaf = self._select(root)
+            simulation_result = self._simulate(leaf.state, leaf.player)
+            self._backpropagate(leaf, simulation_result)
+
+        return root
+
+    def _select(self, node):
+        """
+        Seleziona un nodo utilizzando UCT (Upper Confidence Bound for Trees).
+        """
+        while node.children:
+            node = max(node.children, key=lambda child: self._uct(child))
+        if not node.is_fully_expanded():
+            return self._expand(node)
+        return node
+
+    def _expand(self, node):
+        """
+        Espande il nodo generando un nuovo figlio.
+        """
+        untried_actions = node.get_untried_actions()
+        action = random.choice(untried_actions)
+        new_state, _, _, _, _ = deepcopy(node.state).step([action, 99])
+        child_node = Node(state=new_state, parent=node, player=1 - node.player, action=action)
+        node.children.append(child_node)
+        return child_node
+
+    def _simulate(self, state, player):
+        """
+        Esegue una simulazione usando una politica greedy a partire da uno stato.
+        
+        :param state: Lo stato iniziale della simulazione.
+        :param player: Il giocatore corrente (0 o 1).
+        :return: Il risultato della simulazione.
+        """
+        g_copy = deepcopy(state)
+        current_player = player
+
+        while not g_copy.is_terminal():
+            # Usa la politica greedy per scegliere l'azione migliore
+            best_action = self._greedy_action(g_copy, current_player)
+            g_copy.step([best_action, 99] if current_player == 0 else [99, best_action])
+
+            # Cambia giocatore
+            current_player = 1 - current_player
+
+        # Valuta lo stato finale per il giocatore iniziale
+        return self._evaluate(g_copy, player)
+
+    def _greedy_action(self, state, player):
+        """
+        Sceglie la migliore azione per il giocatore corrente utilizzando una politica greedy.
+        
+        :param state: Lo stato corrente.
+        :param player: Il giocatore che effettua la mossa (0 o 1).
+        :return: L'azione migliore da eseguire.
+        """
+        best_action = None
+        best_value = float('-inf') if player == 0 else float('inf')  # Massimizza per il player 0, minimizza per il player 1
+
+        for action in range(DEFAULT_N_ACTIONS):
+            g_copy = deepcopy(state)
+            new_state, _, _, _, _ = g_copy.step([action, 99] if player == 0 else [99, action])
+
+            # Valuta lo stato risultante
+            eval_value = self._evaluate(new_state, player)
+
+            # Aggiorna l'azione migliore
+            if (player == 0 and eval_value > best_value) or (player == 1 and eval_value < best_value):
+                best_value = eval_value
+                best_action = action
+
+        return best_action if best_action is not None else random.randint(0, DEFAULT_N_ACTIONS - 1)
+
+    def _evaluate(self, state, player):
+        """
+        Valuta lo stato finale per un giocatore specifico.
+        """
+        return game_state_eval(state, player)
+
+    def _backpropagate(self, node, result):
+        """
+        Propaga i risultati della simulazione verso la radice.
+        """
+        while node:
+            node.visits += 1
+            node.value += result if node.player == node.parent.player else -result
+            node = node.parent
+
+    def _uct(self, node):
+        """
+        Calcola l'Upper Confidence Bound per un nodo.
+        """
+        if node.visits == 0:
+            return float('inf')  # Esplora nodi non visitati
+        return (node.value / node.visits +
+                self.exploration_weight * math.sqrt(math.log(node.parent.visits) / node.visits))
+
+    def get_action(self, g) -> int:
+        """
+        Trova la migliore azione combinando MCTS e Minimax.
+        """
+        # Fase 1: Usa MCTS per esplorare i primi livelli
+        root = self.mcts(g, root_player=0)
+
+        # Fase 2: Seleziona i nodi più promettenti in base alle visite e ai valori
+        promising_nodes = sorted(root.children, key=lambda child: (child.visits, child.value), reverse=True)[:3]
+
+        # Determina la profondità dinamica di Minimax
+        dynamic_depth = self.get_dynamic_minimax_depth(len(promising_nodes))
+
+        # Fase 3: Usa Minimax per approfondire sui nodi selezionati
+        best_action = None
+        best_value = float('-inf')
+
+        for node in promising_nodes:
+            eval_score, _ = self.minimax(node.state, dynamic_depth, float('-inf'), float('inf'), True)
+            if eval_score > best_value:
+                best_value = eval_score
+                best_action = node.action
+
+        return best_action if best_action is not None else 0 
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        """
+        Algoritmo Minimax con Alpha-Beta Pruning.
+        """
+        if depth == 0:
+            return game_state_eval(g, depth), None
+
+        if is_maximizing_player:
+            max_eval = float('-inf')
+            best_action = None
+            for i in range(DEFAULT_N_ACTIONS):
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([i, 99])
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
+                    continue
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_action = i
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break
+            return max_eval, best_action
+
+        else:
+            min_eval = float('inf')
+            best_action = None
+            for j in range(DEFAULT_N_ACTIONS):
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, j])
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_action = j
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break
+            return min_eval, best_action
