@@ -72,4 +72,4 @@ class BattleEcosystem:
         # Stampa i risultati di tutte le vittorie
         print("\nRisultati Finali:")
         for cm, wins in self.win_counts.items():
-            print(f"{cm.competitor.name} ha vinto {wins} partite.")
+            print(f"{cm.competitor.name} con algoritmo {cm.competitor.battle_policy.name} ha vinto {wins} partite.")

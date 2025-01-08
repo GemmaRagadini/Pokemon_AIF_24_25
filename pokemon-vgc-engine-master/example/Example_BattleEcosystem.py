@@ -1,5 +1,5 @@
 import time
-from Example_Competitor import ExampleCompetitor, MyCompetitor, TerminalExampleCompetitor
+from Example_Competitor import ExampleCompetitor, MyCompetitor0, MyCompetitor1, TerminalExampleCompetitor
 from vgc.balance.meta import StandardMetaData
 from vgc.competition.Competitor import CompetitorManager
 from vgc.ecosystem.BattleEcosystem import BattleEcosystem
@@ -13,10 +13,10 @@ def main():
     roster = RandomPkmRosterGenerator().gen_roster()
     meta_data = StandardMetaData()
     le = BattleEcosystem(meta_data, debug=True)
-    cm1 = CompetitorManager(MyCompetitor("Player 0"))
+    cm1 = CompetitorManager(MyCompetitor0("Player 0"))
     cm1.team = RandomTeamFromRoster(roster).get_team()
     le.register(cm1)
-    cm2 = CompetitorManager(ExampleCompetitor("Player 1"))
+    cm2 = CompetitorManager(MyCompetitor1("Player 1"))
     cm2.team = RandomTeamFromRoster(roster).get_team()
     le.register(cm2)
     # for i in range(N_PLAYERS):
@@ -25,7 +25,7 @@ def main():
     #     le.register(cm)
      # Misurazione del tempo di esecuzione
     start_time = time.time()
-    le.run(10)
+    le.run(5)
     end_time = time.time()
     
     # Stampa del tempo impiegato

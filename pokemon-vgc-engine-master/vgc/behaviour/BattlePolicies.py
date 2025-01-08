@@ -502,6 +502,7 @@ class GUIPlayer(BattlePolicy):
 class MyMinimax(BattlePolicy):
     def __init__(self, max_depth: int = 4):
         self.max_depth = max_depth
+        self.name = "Minimax"
 
     def minimax(self, g, depth, is_maximizing_player):
         """
@@ -561,6 +562,7 @@ class MyMinimax(BattlePolicy):
 class MyMinimaxWithAlphaBeta(BattlePolicy):
     def __init__(self, max_depth: int = 4):
         self.max_depth = max_depth
+        self.name = "Minimax with pruning alpha beta"
 
     def minimax(self, g, depth, alpha, beta, is_maximizing_player):
         """
@@ -635,6 +637,7 @@ class MyMonteCarlo(BattlePolicy):
         """
         self.max_iterations = max_iterations
         self.exploration_weight = exploration_weight
+        self.name = "Monte Carlo"
 
     def mcts(self, g, root_player: int):
         """
@@ -772,6 +775,7 @@ class MyMonteCarloWithMinimax(BattlePolicy):
         self.exploration_weight = exploration_weight
         self.minimax_depth = minimax_depth
         self.dynamic_minimax = dynamic_minimax
+        self.name = "Monte Carlo with Minimax"
 
     def get_dynamic_minimax_depth(self, num_promising_nodes):
         """
