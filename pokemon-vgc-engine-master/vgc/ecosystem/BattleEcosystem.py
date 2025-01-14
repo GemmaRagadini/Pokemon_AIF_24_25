@@ -41,7 +41,6 @@ class BattleEcosystem:
     def run(self, n_epochs: int):
         epoch = 0
         while epoch < n_epochs:
-            print(f"Epoch {epoch + 1} of {n_epochs}")  # Stampa il numero dell'epoca corrente
             self.__run_matches(self.__schedule_matches())
             epoch += 1
         self.print_results()  # Stampa i risultati dopo tutti gli epoch
@@ -70,6 +69,6 @@ class BattleEcosystem:
 
     def print_results(self):
         # Stampa i risultati di tutte le vittorie
-        print("\nRisultati Finali:")
+        print("\nRisultati:")
         for cm, wins in self.win_counts.items():
             print(f"{cm.competitor.name} con algoritmo {cm.competitor.battle_policy.name} ha vinto {wins} partite.")
