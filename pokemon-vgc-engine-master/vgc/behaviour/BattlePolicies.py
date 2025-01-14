@@ -760,6 +760,189 @@ class Node:
         # Ottiene le azioni possibili dallo stato
         return [i for i in range(DEFAULT_N_ACTIONS)]
 
+#si prova con la killer move
+
+
+class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
+
+    def __init__(self, max_depth: int = 4):
+        self.max_depth = max_depth
+        self.name = "Minimax with pruning alpha beta killer"
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Memorizza le killer moves per profondità
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        if depth == 0:
+            return game_state_eval(g, depth), None
+
+        if is_maximizing_player:
+            max_eval = float('-inf')
+            best_action = None
+
+            # Ottieni le azioni disponibili
+            moves = list(range(DEFAULT_N_ACTIONS))
+
+            # Prioritizza le killer moves
+            killer_moves = self.killer_moves.get(depth, [])
+            moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
+
+            for i in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([i, 99])
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_action = i
+
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    # Aggiorna le killer moves
+                    if i not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(i)
+                        if len(self.killer_moves[depth]) > 2:  # Limita a 2 killer moves per profondità
+                            self.killer_moves[depth].pop(0)
+                    break
+            return max_eval, best_action
+
+        else:
+            min_eval = float('inf')
+            best_action = None
+
+            # Ottieni le azioni disponibili
+            moves = list(range(DEFAULT_N_ACTIONS))
+
+            # Prioritizza le killer moves
+            killer_moves = self.killer_moves.get(depth, [])
+            moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
+
+            for j in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, j])
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_action = j
+
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    # Aggiorna le killer moves
+                    if j not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(j)
+                        if len(self.killer_moves[depth]) > 2:  # Limita a 2 killer moves per profondità
+                            self.killer_moves[depth].pop(0)
+                    break
+            return min_eval, best_action
+
+    def get_action(self, g) -> int:
+        _, best_action = self.minimax(g, self.max_depth, float('-inf'), float('inf'), True)
+        return best_action if best_action is not None else 0
+
+
+
+class MyMinimaxWithAlphaBetaSortedKiller(BattlePolicy):
+    def __init__(self, max_depth: int = 4):
+        self.max_depth = max_depth
+        self.name = "Minimax with pruning alpha beta sorted killer"
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Killer moves per profondità
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        if depth == 0:
+            return game_state_eval(g, depth), None
+
+        if is_maximizing_player:
+            max_eval = float('-inf')
+            best_action = None
+
+            # Ottieni le mosse disponibili
+            moves = list(range(DEFAULT_N_ACTIONS))
+
+            # Ordina le mosse: killer moves prima, poi in base alla valutazione preliminare
+            moves = self._sort_moves(g, moves, depth, is_maximizing_player)
+
+            for i in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([i, 99])
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_action = i
+
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    # Aggiorna killer moves
+                    if i not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(i)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
+                    break
+            return max_eval, best_action
+
+        else:
+            min_eval = float('inf')
+            best_action = None
+
+            # Ottieni le mosse disponibili
+            moves = list(range(DEFAULT_N_ACTIONS))
+
+            # Ordina le mosse: killer moves prima, poi in base alla valutazione preliminare
+            moves = self._sort_moves(g, moves, depth, is_maximizing_player)
+
+            for j in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, j])
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_action = j
+
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    # Aggiorna killer moves
+                    if j not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(j)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
+                    break
+            return min_eval, best_action
+
+    def _sort_moves(self, g, moves, depth, is_maximizing_player):
+        """
+        Ordina le mosse basandosi sulle killer moves e sulla valutazione preliminare.
+
+        :param g: Lo stato corrente del gioco.
+        :param moves: Lista di mosse disponibili.
+        :param depth: Profondità corrente.
+        :param is_maximizing_player: Se il giocatore corrente è massimizzante.
+        :return: Lista di mosse ordinate.
+        """
+        # Valuta ogni mossa
+        move_scores = []
+        for move in moves:
+            g_copy = deepcopy(g)
+            s, _, _, _, _ = g_copy.step([move, 99] if is_maximizing_player else [99, move])
+            score = game_state_eval(s[0], depth)
+            move_scores.append((move, score))
+
+        # Ordina: killer moves prima, poi in base al punteggio
+        killer_moves = self.killer_moves.get(depth, [])
+        move_scores.sort(key=lambda x: (x[0] not in killer_moves, -x[1] if is_maximizing_player else x[1]))
+        return [move for move, _ in move_scores]
+
+    def get_action(self, g) -> int:
+        _, best_action = self.minimax(g, self.max_depth, float('-inf'), float('inf'), True)
+        return best_action if best_action is not None else 0
+
 
 class MyMonteCarloWithMinimax(BattlePolicy):
     def __init__(self, max_iterations: int = 200, exploration_weight: float = 1.8, minimax_depth: int = 5, dynamic_minimax: bool = True):
@@ -965,3 +1148,136 @@ class MyMonteCarloWithMinimax(BattlePolicy):
                 if beta <= alpha:
                     break
             return min_eval, best_action
+
+
+import hashlib
+
+class MyMinimaxWithAlphaBetaKillertransposition(BattlePolicy):
+    def __init__(self, max_depth: int = 4):
+        self.max_depth = max_depth
+        self.name = "Minimax with pruning alpha beta killer transposition"
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Killer moves per depth
+        self.transposition_table = {}  # Transposition table
+
+    def _hash_state(self, g):
+        """
+        Hash the game state to use as a key in the transposition table.
+        """
+        return hashlib.md5(str(g).encode()).hexdigest()
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        state_hash = self._hash_state(g)
+
+        # Check the transposition table
+        if state_hash in self.transposition_table:
+            entry = self.transposition_table[state_hash]
+            if entry['depth'] >= depth:
+                if entry['flag'] == 'EXACT':
+                    return entry['value'], entry['best_action']
+                elif entry['flag'] == 'LOWERBOUND' and entry['value'] > alpha:
+                    alpha = entry['value']
+                elif entry['flag'] == 'UPPERBOUND' and entry['value'] < beta:
+                    beta = entry['value']
+                if alpha >= beta:
+                    return entry['value'], entry['best_action']
+
+        # Terminal condition or depth limit
+        if depth == 0:
+            eval_score = game_state_eval(g, depth)
+            self.transposition_table[state_hash] = {
+                'value': eval_score,
+                'depth': depth,
+                'flag': 'EXACT',
+                'best_action': None
+            }
+            return eval_score, None
+
+        best_action = None
+
+        if is_maximizing_player:
+            max_eval = float('-inf')
+            moves = list(range(DEFAULT_N_ACTIONS))
+            moves = self._sort_moves(g, moves, depth, is_maximizing_player)
+
+            for i in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([i, 99])
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_action = i
+
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    # Update killer moves
+                    if i not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(i)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
+                    break
+
+            # Store in the transposition table
+            self.transposition_table[state_hash] = {
+                'value': max_eval,
+                'depth': depth,
+                'flag': 'EXACT' if alpha < beta else 'LOWERBOUND',
+                'best_action': best_action
+            }
+            return max_eval, best_action
+
+        else:
+            min_eval = float('inf')
+            moves = list(range(DEFAULT_N_ACTIONS))
+            moves = self._sort_moves(g, moves, depth, is_maximizing_player)
+
+            for j in moves:
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, j])
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue
+
+                eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_action = j
+
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    # Update killer moves
+                    if j not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(j)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
+                    break
+
+            # Store in the transposition table
+            self.transposition_table[state_hash] = {
+                'value': min_eval,
+                'depth': depth,
+                'flag': 'EXACT' if alpha < beta else 'UPPERBOUND',
+                'best_action': best_action
+            }
+            return min_eval, best_action
+
+    def _sort_moves(self, g, moves, depth, is_maximizing_player):
+        """
+        Sort moves based on killer moves and preliminary evaluation.
+        """
+        move_scores = []
+        for move in moves:
+            g_copy = deepcopy(g)
+            s, _, _, _, _ = g_copy.step([move, 99] if is_maximizing_player else [99, move])
+            score = game_state_eval(s[0], depth)
+            move_scores.append((move, score))
+
+        # Sort: killer moves first, then by evaluation score
+        killer_moves = self.killer_moves.get(depth, [])
+        move_scores.sort(key=lambda x: (x[0] not in killer_moves, -x[1] if is_maximizing_player else x[1]))
+        return [move for move, _ in move_scores]
+
+    def get_action(self, g) -> int:
+        _, best_action = self.minimax(g, self.max_depth, float('-inf'), float('inf'), True)
+        return best_action if best_action is not None else 0

@@ -24,6 +24,8 @@ def main():
     #     cm.team = RandomTeamFromRoster(roster).get_team()
     #     le.register(cm)
      # Misurazione del tempo di esecuzione
+
+  
     start_time = time.time()
     le.run(5)
     end_time = time.time()
