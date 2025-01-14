@@ -13,6 +13,7 @@ from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE, TYP
 from vgc.datatypes.Objects import GameState, PkmTeam
 from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition
 import math
+import hashlib
 
 class RandomPlayer(BattlePolicy):
     """
@@ -1149,8 +1150,120 @@ class MyMonteCarloWithMinimax(BattlePolicy):
                     break
             return min_eval, best_action
 
+class MCTS_MR(BattlePolicy):
+    def __init__(self, max_iterations: int = 1000, exploration_weight: float = 1.41, minimax_depth: int = 2):
+        """
+        Inizializza la politica Monte Carlo Tree Search con Minimax Rollouts (MCTS-MR).
 
-import hashlib
+        :param max_iterations: Numero massimo di iterazioni per MCTS.
+        :param exploration_weight: Peso per il termine di esplorazione (valore di C).
+        :param minimax_depth: Profondità massima per le ricerche Minimax durante i rollout.
+        """
+        self.max_iterations = max_iterations
+        self.exploration_weight = exploration_weight
+        self.minimax_depth = minimax_depth
+        self.name = "Monte Carlo with Minimax Rollouts"
+
+    def mcts(self, g, root_player: int):
+        # Nodo radice
+        root = Node(state=deepcopy(g), parent=None, player=root_player)
+
+        for _ in range(self.max_iterations):
+            leaf = self._select(root)
+            simulation_result = self._simulate(leaf.state, leaf.player)
+            self._backpropagate(leaf, simulation_result)
+
+        # Scegli la migliore azione dalla radice
+        best_child = max(root.children, key=lambda child: child.visits)
+        return best_child.action
+
+    def _simulate(self, state, player):
+        """
+        Esegue una simulazione informata a partire da uno stato, usando Minimax quando possibile.
+
+        :param state: Lo stato iniziale della simulazione.
+        :param player: Il giocatore corrente.
+        :return: Il risultato della simulazione.
+        """
+        g_copy = deepcopy(state)
+        while not g_copy.is_terminal():
+            # Usa minimax per scegliere la prossima azione nei rollout
+            action = self._minimax_action(g_copy, self.minimax_depth, player)
+            g_copy.step([action, 99])  # L'avversario esegue un'azione non valida
+        return self._evaluate(g_copy, player)
+
+    def _minimax_action(self, g, depth, player):
+        """
+        Usa una ricerca Minimax a profondità limitata per scegliere un'azione.
+
+        :param g: Lo stato corrente del gioco.
+        :param depth: La profondità massima della ricerca.
+        :param player: Il giocatore corrente (0 o 1).
+        :return: L'azione migliore trovata tramite Minimax.
+        """
+        def minimax(g, depth, is_maximizing):
+            if depth == 0 or g.is_terminal():
+                return game_state_eval(g, player), None
+
+            if is_maximizing:
+                max_eval = float('-inf')
+                best_action = None
+                for i in range(DEFAULT_N_ACTIONS):
+                    g_copy = deepcopy(g)
+                    s, _, _, _, _ = g_copy.step([i, 99])
+                    eval_score, _ = minimax(s[0], depth - 1, False)
+                    if eval_score > max_eval:
+                        max_eval = eval_score
+                        best_action = i
+                return max_eval, best_action
+            else:
+                min_eval = float('inf')
+                best_action = None
+                for j in range(DEFAULT_N_ACTIONS):
+                    g_copy = deepcopy(g)
+                    s, _, _, _, _ = g_copy.step([99, j])
+                    eval_score, _ = minimax(s[0], depth - 1, True)
+                    if eval_score < min_eval:
+                        min_eval = eval_score
+                        best_action = j
+                return min_eval, best_action
+
+        _, best_action = minimax(g, depth, True)
+        return best_action if best_action is not None else random.randint(0, DEFAULT_N_ACTIONS - 1)
+
+    def _evaluate(self, state, player):
+        return game_state_eval(state, player)
+
+    def _select(self, node):
+        while node.children:
+            node = max(node.children, key=lambda child: self._uct(child))
+        if not node.is_fully_expanded():
+            return self._expand(node)
+        return node
+
+    def _expand(self, node):
+        untried_actions = node.get_untried_actions()
+        action = random.choice(untried_actions)
+        new_state, _, _, _, _ = deepcopy(node.state).step([action, 99])
+        child_node = Node(state=new_state, parent=node, player=1 - node.player, action=action)
+        node.children.append(child_node)
+        return child_node
+
+    def _backpropagate(self, node, result):
+        while node:
+            node.visits += 1
+            node.value += result if node.player == node.parent.player else -result
+            node = node.parent
+
+    def _uct(self, node):
+        if node.visits == 0:
+            return float('inf')
+        return (node.value / node.visits +
+                self.exploration_weight * math.sqrt(math.log(node.parent.visits) / node.visits))
+
+    def get_action(self, g) -> int:
+        return self.mcts(g, root_player=0)
+
 
 class MyMinimaxWithAlphaBetaKillertransposition(BattlePolicy):
     def __init__(self, max_depth: int = 4):
