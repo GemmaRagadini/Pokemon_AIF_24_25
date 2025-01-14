@@ -1,15 +1,14 @@
 from vgc.behaviour import BattlePolicy, TeamSelectionPolicy, TeamBuildPolicy
-from vgc.behaviour.BattlePolicies import RandomPlayer, TerminalPlayer, MyMinimax, MyMonteCarlo, MyMonteCarloWithMinimax, MyMinimaxWithAlphaBetaKiller,MyMinimaxWithAlphaBetaSortedKiller, MyMinimaxWithAlphaBetaKillertransposition
+from vgc.behaviour.BattlePolicies import RandomPlayer, Bot4BattlePolicy, MCTS_MR, MCTS_MS,TunedTreeTraversal, MyMinimax, MyMonteCarlo, MyMinimaxWithAlphaBeta, MyMinimaxWithAlphaBetaKiller,MyMinimaxWithAlphaBetaSortedKiller,MyMinimaxWithAlphaBetaKillertransposition
 from vgc.behaviour.TeamBuildPolicies import TerminalTeamBuilder, RandomTeamBuilder
 from vgc.behaviour.TeamSelectionPolicies import FirstEditionTeamSelectionPolicy
 from vgc.competition.Competitor import Competitor
 
-# aggiunti
 class MyCompetitor0(Competitor): 
 
     def __init__(self, name: str = "My Example"):
         self._name = name
-        self._battle_policy =  MyMinimaxWithAlphaBetaKillertransposition()
+        self._battle_policy = Bot4BattlePolicy()
         self._team_selection_policy = FirstEditionTeamSelectionPolicy()
         self._team_build_policy = RandomTeamBuilder()
 
@@ -34,7 +33,7 @@ class MyCompetitor1(Competitor):
 
     def __init__(self, name: str = "My Example"):
         self._name = name
-        self._battle_policy =  MyMinimax()
+        self._battle_policy =  RandomPlayer()
         self._team_selection_policy = FirstEditionTeamSelectionPolicy()
         self._team_build_policy = RandomTeamBuilder()
 
