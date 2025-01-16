@@ -43,7 +43,7 @@ class BattleEcosystem:
         while epoch < n_epochs:
             self.__run_matches(self.__schedule_matches())
             epoch += 1
-        self.print_results()  # Stampa i risultati dopo tutti gli epoch
+        # self.print_results()  # Stampa i risultati dopo tutti gli epoch
         
     def __schedule_matches(self) -> List[Tuple[CompetitorManager, CompetitorManager]]:
         n_matches = len(self.competitors) // 2
@@ -67,8 +67,8 @@ class BattleEcosystem:
             cm0.elo, cm1.elo = elo_rating(cm0.elo, cm1.elo, 1 if match.winner() == 0 else 0)
 
 
-    def print_results(self):
-        # Stampa i risultati di tutte le vittorie
-        print("\nRisultati:")
-        for cm, wins in self.win_counts.items():
-            print(f"{cm.competitor.name} con algoritmo {cm.competitor.battle_policy.name} ha vinto {wins} partite.")
+    # def print_results(self):
+    #     # Stampa i risultati di tutte le vittorie
+    #     print("\nRisultati:")
+    #     for cm, wins in self.win_counts.items():
+    #         print(f"{cm.competitor.name} con algoritmo {cm.competitor.battle_policy.name} ha vinto {wins} partite.")

@@ -7,7 +7,7 @@ from typing import List
 from random import random
 import numpy as np
 from customtkinter import CTk, CTkButton, CTkRadioButton, CTkLabel
-
+import pickle
 from vgc.behaviour import BattlePolicy,BattlePolicies
 from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE, TYPE_CHART_MULTIPLIER, DEFAULT_N_ACTIONS, MAX_HIT_POINTS, STATE_DAMAGE, SPIKES_2, SPIKES_3
 from vgc.datatypes.Objects import GameState, PkmTeam,PkmMove, Pkm
@@ -18,6 +18,17 @@ from typing import List
 import numpy as np
 from vgc.competition.StandardPkmMoves import Struggle
 from operator import itemgetter
+
+from typing import Tuple, List, Dict
+import heapq
+import copy
+
+import numpy as np
+from vgc.behaviour import BattlePolicy
+from vgc.datatypes.Constants import TYPE_CHART_MULTIPLIER
+from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE
+from vgc.datatypes.Objects import GameState
+from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition
 
 
 class RandomPlayer(BattlePolicy):
@@ -1646,3 +1657,4 @@ class Bot4BattlePolicy(BattlePolicy):
             damage += STATE_DAMAGE
 
         return damage
+    
