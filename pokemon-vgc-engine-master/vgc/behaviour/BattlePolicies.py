@@ -43,25 +43,12 @@ class RandomPlayer(BattlePolicy):
         self.pi: List[float] = ([(1. - switch_probability) / n_moves] * n_moves) + (
                 [switch_probability / n_switches] * n_switches)
         self.name = "Random Player"
+
     def get_action(self, g: GameState) -> int:
         return np.random.choice(self.n_actions, p=self.pi)
 
 
-def estimate_damage(move_type: PkmType, pkm_type: PkmType, move_power: float, opp_pkm_type: PkmType,
-                    attack_stage: int, defense_stage: int, weather: WeatherCondition) -> float:
-    stab = 1.5 if move_type == pkm_type else 1.
-    if (move_type == PkmType.WATER and weather == WeatherCondition.RAIN) or (
-            move_type == PkmType.FIRE and weather == WeatherCondition.SUNNY):
-        weather = 1.5
-    elif (move_type == PkmType.WATER and weather == WeatherCondition.SUNNY) or (
-            move_type == PkmType.FIRE and weather == WeatherCondition.RAIN):
-        weather = .5
-    else:
-        weather = 1.
-    stage_level = attack_stage - defense_stage
-    stage = (stage_level + 2.) / 2 if stage_level >= 0. else 2. / (np.abs(stage_level) + 2.)
-    damage = TYPE_CHART_MULTIPLIER[move_type][opp_pkm_type] * stab * weather * stage * move_power
-    return damage
+
 
 
 class OneTurnLookahead(BattlePolicy):
@@ -196,6 +183,58 @@ def game_state_eval(s: GameState, depth):
 #     return hp_score + 0.5 * fainted_score + depth_penalty
 
 
+#provare a fare qualcosa con la forza di un pokemon magari la forza delle sue mosse
+def estimate_damage(move_type: PkmType, pkm_type: PkmType, move_power: float, opp_pkm_type: PkmType,
+                    attack_stage: int, defense_stage: int, weather: WeatherCondition) -> float:
+    stab = 1.5 if move_type == pkm_type else 1.
+    if (move_type == PkmType.WATER and weather == WeatherCondition.RAIN) or (
+            move_type == PkmType.FIRE and weather == WeatherCondition.SUNNY):
+        weather = 1.5
+    elif (move_type == PkmType.WATER and weather == WeatherCondition.SUNNY) or (
+            move_type == PkmType.FIRE and weather == WeatherCondition.RAIN):
+        weather = .5
+    else:
+        weather = 1.
+    stage_level = attack_stage - defense_stage
+    stage = (stage_level + 2.) / 2 if stage_level >= 0. else 2. / (np.abs(stage_level) + 2.)
+    damage = TYPE_CHART_MULTIPLIER[move_type][opp_pkm_type] * stab * weather * stage * move_power
+    return damage
+
+def My_game_state_eval(state, depth):
+    """
+    Funzione di valutazione avanzata basata sull'impatto delle mosse più potenti.
+    """
+    mine = state.teams[0].active
+    opp = state.teams[1].active
+
+    # Calcola il massimo danno che il Pokémon attivo può infliggere
+    max_damage_to_opponent = max(estimate_damage(move.type, mine.type,move.power,opp.type,mine.status,opp.status,move.weather) for move in mine.moves)
+
+    # Calcola il massimo danno che il Pokémon avversario può infliggere
+    max_damage_from_opponent = max(estimate_damage(move.type, opp.type,move.power,mine.type,opp.status,mine.status,move.weather) for move in opp.moves)
+
+    # Valuta la differenza in termini di potenziale offensivo e difensivo
+    damage_balance = max_damage_to_opponent - max_damage_from_opponent
+
+    # Considera la vita residua
+    hp_balance = mine.hp / mine.max_hp - opp.hp / opp.max_hp
+
+    # Considera il numero di Pokémon rimanenti per entrambe le squadre
+    team_balance = len([p for p in state.teams[0].pokemons if not p.fainted]) - len([p for p in state.teams[1].pokemons if not p.fainted])
+
+    # Combina i fattori in un punteggio
+    score = 2 * damage_balance + hp_balance + 0.5 * team_balance - 0.05 * depth
+    return score
+
+    
+
+    return 
+    #hp_score + 0.5 * relative_dam + depth_penalty
+
+
+   # return mine.hp / mine.max_hp - 3 * opp.hp / opp.max_hp - 0.3 * depth
+
+
 
 class BreadthFirstSearch(BattlePolicy):
     """
@@ -255,6 +294,7 @@ class Minimax(BattlePolicy):
 
     def __init__(self, max_depth: int = 4):
         self.max_depth = max_depth
+        self.name = 'Minimax'
 
     def get_action(self, g) -> int:  # g: PkmBattleEnv
         root: BFSNode = BFSNode()
@@ -714,7 +754,7 @@ class MyMonteCarlo(BattlePolicy):
         g_copy = deepcopy(state)
         while not g_copy.is_terminal():
             action = random.randint(0, DEFAULT_N_ACTIONS - 1)
-            g_copy.step([action, 99])  # Simulazione casuale
+            g_copy.step([action, 99])  
         return self._evaluate(g_copy, player)
 
     def _evaluate(self, state, player):
@@ -780,14 +820,14 @@ class Node:
 
 class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
 
-    def __init__(self, max_depth: int = 4):
+    def __init__(self, max_depth: int = 5):
         self.max_depth = max_depth
         self.name = "Minimax with pruning alpha beta killer"
         self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Memorizza le killer moves per profondità
 
     def minimax(self, g, depth, alpha, beta, is_maximizing_player):
         if depth == 0:
-            return game_state_eval(g, depth), None
+            return My_game_state_eval(g, depth), None
 
         if is_maximizing_player:
             max_eval = float('-inf')
@@ -816,7 +856,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
                     # Aggiorna le killer moves
                     if i not in self.killer_moves[depth]:
                         self.killer_moves[depth].append(i)
-                        if len(self.killer_moves[depth]) > 2:  # Limita a 2 killer moves per profondità
+                        if len(self.killer_moves[depth]) > 2:  
                             self.killer_moves[depth].pop(0)
                     break
             return max_eval, best_action
@@ -848,7 +888,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
                     # Aggiorna le killer moves
                     if j not in self.killer_moves[depth]:
                         self.killer_moves[depth].append(j)
-                        if len(self.killer_moves[depth]) > 2:  # Limita a 2 killer moves per profondità
+                        if len(self.killer_moves[depth]) > 2: 
                             self.killer_moves[depth].pop(0)
                     break
             return min_eval, best_action
@@ -904,7 +944,7 @@ class MyMinimaxWithAlphaBetaSortedKiller(BattlePolicy):
             min_eval = float('inf')
             best_action = None
 
-            # Ottieni le mosse disponibili
+            # per ottenere le mosse disponibili
             moves = list(range(DEFAULT_N_ACTIONS))
 
             # Ordina le mosse: killer moves prima, poi in base alla valutazione preliminare
@@ -1075,7 +1115,7 @@ class MCTS_MR(BattlePolicy):
 
 
 class MyMinimaxWithAlphaBetaKillertransposition(BattlePolicy):
-    def __init__(self, max_depth: int = 4):
+    def __init__(self, max_depth: int = 12):
         self.max_depth = max_depth
         self.name = "Minimax with pruning alpha beta killer transposition"
         self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Killer moves per depth
@@ -1240,7 +1280,7 @@ class MCTS_MS(BattlePolicy):
         """
         while node.children:
             # Applica minimax se un nodo raggiunge un numero minimo di visite
-            if node.visits >= 5:  # Soglia configurabile
+            if node.visits >= 5:  
                 minimax_result = self._minimax_action(node.state, self.minimax_depth, node.player)
                 if minimax_result is not None:
                     return Node(state=deepcopy(node.state), parent=node, player=node.player)
@@ -1248,7 +1288,7 @@ class MCTS_MS(BattlePolicy):
             # Se non soddisfa i criteri di minimax, usa UCT per scegliere
             node = max(node.children, key=lambda child: self._uct(child))
         
-        # Se il nodo non è completamente espanso, espandi
+        # continua ad espandere il nodo
         if not node.is_fully_expanded():
             return self._expand(node)
         return node
@@ -1284,7 +1324,7 @@ class MCTS_MS(BattlePolicy):
                 return min_eval
 
         eval_score = minimax(g, depth, True)
-        return eval_score if eval_score > 0.5 else None  # Configurabile per soglie diverse
+        return eval_score if eval_score > 0.5 else None  
 
     def _expand(self, node):
         untried_actions = node.get_untried_actions()
@@ -1298,7 +1338,7 @@ class MCTS_MS(BattlePolicy):
         g_copy = deepcopy(state)
         while not g_copy.is_terminal():
             action = random.randint(0, DEFAULT_N_ACTIONS - 1)
-            g_copy.step([action, 99])  # Simulazione casuale
+            g_copy.step([action, 99]) 
         return self._evaluate(g_copy, player)
 
     def _evaluate(self, state, player):
@@ -1658,3 +1698,172 @@ class Bot4BattlePolicy(BattlePolicy):
 
         return damage
     
+
+
+
+
+# Eval functions
+def estimate_damage(move_type: PkmType, pkm_type: PkmType, move_power: float, opp_pkm_type: PkmType,
+                    attack_stage: int, defense_stage: int, weather: WeatherCondition) -> float:
+    stab = 1.5 if move_type == pkm_type else 1.
+    if (move_type == PkmType.WATER and weather == WeatherCondition.RAIN) or (
+            move_type == PkmType.FIRE and weather == WeatherCondition.SUNNY):
+        weather = 1.5
+    elif (move_type == PkmType.WATER and weather == WeatherCondition.SUNNY) or (
+            move_type == PkmType.FIRE and weather == WeatherCondition.RAIN):
+        weather = .5
+    else:
+        weather = 1.
+    stage_level = attack_stage - defense_stage
+    stage = (stage_level + 2.) / 2 if stage_level >= 0. else 2. / (np.abs(stage_level) + 2.)
+    damage = TYPE_CHART_MULTIPLIER[move_type][opp_pkm_type] * stab * weather * stage * move_power
+    return damage
+
+
+def evaluate_matchup(pkm_type: PkmType, opp_pkm_type: PkmType, moves_type: List[PkmType]) -> float:
+    # determine defensive matchup
+    double_damage = False
+    normal_damage = False
+    half_damage = False
+    for mtype in moves_type:
+        damage = TYPE_CHART_MULTIPLIER[mtype][pkm_type]
+        if damage == 2.0:
+            double_damage = True
+        elif damage == 1.0:
+            normal_damage = True
+        elif damage == 0.5:
+            half_damage = True
+
+    if double_damage:
+        return 2.0
+
+    return TYPE_CHART_MULTIPLIER[opp_pkm_type][pkm_type]
+
+
+# My Battle Policy
+class DBaziukBattlePolicy(BattlePolicy):
+    
+    def init(self, switch_probability: float = .15, n_moves: int = DEFAULT_PKM_N_MOVES,
+                 n_switches: int = DEFAULT_PARTY_SIZE):
+        super().init()
+        self.hail_used = False
+        self.sandstorm_used = False
+        self.name = "DBaziukBattlePolicy"
+
+    def requires_encode(self) -> bool:
+        return False
+
+    def close(self):
+        pass
+
+    def get_action(self, g: GameState) -> int:
+        # print("It's me")
+        # get weather condition
+        weather = g.weather.condition
+
+        # get my pkms
+        my_team = g.teams[0]
+        my_active = my_team.active
+        my_party = my_team.party
+        my_attack_stage = my_team.stage[PkmStat.ATTACK]
+        my_defense_stage = my_team.stage[PkmStat.DEFENSE]
+
+        # get opp team
+        opp_team = g.teams[1]
+        opp_active = opp_team.active
+        opp_not_fainted_pkms = len(opp_team.get_not_fainted())
+        opp_attack_stage = opp_team.stage[PkmStat.ATTACK]
+        opp_defense_stage = opp_team.stage[PkmStat.DEFENSE]
+
+        # estimate damage pkm moves
+        damage: List[float] = []
+        for move in my_active.moves:
+            damage.append(estimate_damage(move.type, my_active.type, move.power, opp_active.type, my_attack_stage,
+                                          opp_defense_stage, weather))
+
+        # get most damaging move
+        move_id = int(np.argmax(damage))
+
+        #  If this damage is greater than the opponents current health we knock it out
+        if damage[move_id] >= opp_active.hp:
+            # print("try to knock it out")
+            return move_id
+
+        # If move is super effective use it
+        if damage[move_id] > 0 and TYPE_CHART_MULTIPLIER[my_active.moves[move_id].type][opp_active.type] == 2.0:
+            # print("Attack with supereffective")
+            return move_id
+
+        defense_type_multiplier = evaluate_matchup(my_active.type, opp_active.type,
+                                                   list(map(lambda m: m.type, opp_active.moves)))
+        # print(defense_type_multiplier)
+        if defense_type_multiplier <= 1.0:
+            # Check for spike moves if spikes not setted
+            if opp_team.entry_hazard != PkmEntryHazard.SPIKES and opp_not_fainted_pkms > DEFAULT_PARTY_SIZE / 2:
+                for i in range(DEFAULT_PKM_N_MOVES):
+                    if my_active.moves[i].hazard == PkmEntryHazard.SPIKES:
+                        # print("Setting Spikes")
+                        return i
+
+
+# Use sandstorm if not setted and you have pokemons immune to that
+            if weather != WeatherCondition.SANDSTORM and not self.sandstorm_used and defense_type_multiplier < 1.0:
+                sandstorm_move = -1
+                for i in range(DEFAULT_PKM_N_MOVES):
+                    if my_active.moves[i].weather == WeatherCondition.SANDSTORM:
+                        sandstorm_move = i
+                immune_pkms = 0
+                for pkm in my_party:
+                    if not pkm.fainted() and pkm.type in [PkmType.GROUND, PkmType.STEEL, PkmType.ROCK]:
+                        immune_pkms += 1
+                if sandstorm_move != -1 and immune_pkms > 2:
+                    # print("Using Sandstorm")
+                    self.sandstorm_used = True
+                    return sandstorm_move
+
+            # Use hail if not setted and you have pokemons immune to that
+            if weather != WeatherCondition.HAIL and not self.hail_used and defense_type_multiplier < 1.0:
+                hail_move = -1
+                for i in range(DEFAULT_PKM_N_MOVES):
+                    if my_active.moves[i].weather == WeatherCondition.HAIL:
+                        hail_move = i
+                immune_pkms = 0
+                for pkm in my_party:
+                    if not pkm.fainted() and pkm.type in [PkmType.ICE]:
+                        immune_pkms += 1
+                if hail_move != -1 and immune_pkms > 2:
+                    # print("Using Hail")
+                    self.hail_used = True
+                    return hail_move
+
+            # If enemy attack and defense stage is 0 , try to use attack or defense down
+            if opp_attack_stage == 0 and opp_defense_stage == 0:
+                for i in range(DEFAULT_PKM_N_MOVES):
+                    if my_active.moves[i].target == 1 and my_active.moves[i].stage != 0 and (
+                            my_active.moves[i].stat == PkmStat.ATTACK or my_active.moves[i].stat == PkmStat.DEFENSE):
+                        # print("Debuffing enemy")
+                        return i
+
+            # If spikes not set try to switch
+            # print("Attacking enemy to lower his hp")
+            return move_id
+
+        # If we are not switch, find pokemon with resistance 
+        matchup: List[float] = []
+        not_fainted = False
+        for pkm in my_party:
+            if pkm.hp == 0.0:
+                matchup.append(0.0)
+            else:
+                not_fainted = True
+                matchup.append(
+                    evaluate_matchup(pkm.type, opp_active.type, list(map(lambda m: m.type, opp_active.moves))))
+
+        best_switch = int(np.argmin(matchup))
+        if not_fainted and my_party[best_switch] != my_active:
+            # print("Switching to someone else")
+            return best_switch + 4
+
+        # If our party has no non fainted pkm, lets give maximum possible damage with current active
+        # print("Nothing to do just attack")
+        return move_id
