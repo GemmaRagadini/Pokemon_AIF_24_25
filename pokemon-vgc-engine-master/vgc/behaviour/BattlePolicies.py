@@ -1129,6 +1129,8 @@ def evaluate_matchup(pkm_type: PkmType, opp_pkm_type: PkmType, moves_type: List[
     return TYPE_CHART_MULTIPLIER[opp_pkm_type][pkm_type]
 
 
+
+
 # My Battle Policy
 class MyPolicy(BattlePolicy):
 
@@ -1145,7 +1147,7 @@ class MyPolicy(BattlePolicy):
         active_pkm = my_team.active
         bench = my_team.party
         my_attack_stage = my_team.stage[PkmStat.ATTACK]
-
+       
         # squadra avversaria
         opp_team = g.teams[1]
         opp_active_pkm = opp_team.active
@@ -1155,7 +1157,7 @@ class MyPolicy(BattlePolicy):
 
         # meteo 
         weather = g.weather.condition
-        
+
         # valutazione mosse
         damage: List[float] = []
         for move in active_pkm.moves:
@@ -1208,27 +1210,23 @@ class MyPolicy(BattlePolicy):
             #         self.hail_used = True
             #         return hail_move
             # return move_id
-        
- 
+    
         # considera il cambio pokemon
         matchup: List[float] = []
         not_fainted = False
-        active_idx = 0
         for j in range(len(bench)):
-            if bench[j] == active_pkm: 
-                active_idx = j
             if bench[j].hp == 0.0:
                 matchup.append(0.0)
             else:
                 not_fainted = True
                 matchup.append(
-                    evaluate_matchup(bench[j].type, opp_active_pkm.type, list(map(lambda m: m.type, opp_active_pkm.moves))))
+                    evaluate_matchup(bench[j].type, opp_active_pkm.type, list(map(lambda m: m.type, bench[j].moves))))
     
-        best_switch = int(np.argmin(matchup))
-        if not_fainted and bench[best_switch] != active_pkm and (
-                evaluate_matchup(bench[best_switch].type, opp_active_pkm.type,list(map(lambda m: m.type, opp_active_pkm.moves)) >= (bench[active_idx].type, opp_active_pkm.type,list(map(lambda m: m.type, opp_active_pkm.moves)))+1)) :
-            print(matchup)
-            input()
+        best_switch_matchup = int(np.max(matchup))
+        best_switch = np.argmax(matchup)
+        current_matchup = evaluate_matchup(active_pkm.type, opp_active_pkm.type,list(map(lambda m: m.type, active_pkm.moves)))
+        
+        if not_fainted and best_switch_matchup >= current_matchup+1:
             return best_switch + 4
         
         return move_id
