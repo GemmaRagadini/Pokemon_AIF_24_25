@@ -50,7 +50,6 @@ class RandomPlayer(BattlePolicy):
 
 
 
-
 class OneTurnLookahead(BattlePolicy):
     """
     Greedy heuristic based competition designed to encapsulate a greedy strategy that prioritizes damage output.
@@ -1948,226 +1947,261 @@ def calculate_damage(move, attacker, defender):
 
 
 
-class AggressiveMinimaxWithKiller(BattlePolicy):
-    def __init__(self, max_depth=4):
+class AggressiveMinimaxWithMonteCarlo(BattlePolicy):
+    def __init__(self, max_depth: int = 20, n_simulations: int = 30):
         self.max_depth = max_depth
-        self.name = "Aggressive Minimax with Killer Moves"
-        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}
+        self.n_simulations = n_simulations
+        self.name = "Aggressive Minimax with Monte Carlo and Killer Moves"
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Killer moves per profondità
 
-    def aggressive_eval(self, state):
+    def monte_carlo_evaluation(self, g, move, is_maximizing_player):
         """
-        Funzione di valutazione euristica basata sulla politica aggressiva.
+        Esegue simulazioni Monte Carlo per valutare l'efficacia di una mossa.
         """
-        mine = state.teams[0].active
-        opp = state.teams[1].active
+        total_score = 0
+        for _ in range(self.n_simulations):
+            g_copy = deepcopy(g)
+            if is_maximizing_player:
+                g_copy.step([move, random.randint(0, DEFAULT_N_ACTIONS - 1)])
+            else:
+                g_copy.step([random.randint(0, DEFAULT_N_ACTIONS - 1), move])
+            total_score += self.simulate_random_game(g_copy, is_maximizing_player)
+        return total_score / self.n_simulations
 
-        # Penalità per lo stato corrente (switch obbligatorio)
-        if opp.is_super_effective_against(mine):
-            return -float('inf')  # Forza lo switch
-
-        # Miglior danno possibile
-        best_damage = 0
-        for move in mine.moves:
-            if move.pp > 0 and not move.has_negative_effect_on_user():
-                damage = calculate_damage(move, mine, opp)
-                if mine.speed > opp.speed:  # Bonus velocità
-                    damage *= 1.1
-                best_damage = max(best_damage, damage)
-
-        return best_damage
-
-    def minimax(self, state, depth, alpha, beta, is_maximizing_player):
+    def simulate_random_game(self, g, is_maximizing_player):
         """
-        Minimax con pruning alpha-beta e killer move heuristic.
+        Simula una partita casuale fino alla fine e restituisce una valutazione dello stato.
         """
-        if depth == 0 or state.is_terminal():
-            return self.aggressive_eval(state), None
+        g_copy = deepcopy(g)
+        while not g_copy.is_terminal():
+            g_copy.step([
+                random.randint(0, DEFAULT_N_ACTIONS - 1),
+                random.randint(0, DEFAULT_N_ACTIONS - 1)
+            ])
+        return game_state_eval(g_copy, 0)
 
-        killer_key = (state.hash(), depth)
-        killer_action = self.killer_moves.get(depth, [])
+    
+
+    def best_switch(self, my_team, opponent):
+        """
+        Trova il miglior Pokémon da far entrare in base al tipo dell'avversario.
+        """
+        best_switch_score = float('-inf')
+        best_switch = None
+        for pokemon in my_team:
+            if not pokemon.is_fainted:
+                score = TYPE_CHART_MULTIPLIER[pokemon.primary_type][opponent.type]
+                if score > best_switch_score:
+                    best_switch_score = score
+                    best_switch = pokemon
+        return best_switch
+
+    def minimax(self, g, depth, alpha, beta, is_maximizing_player):
+        if depth == 0 or g.is_terminal():
+            return game_state_eval(g, depth), None
 
         if is_maximizing_player:
             max_eval = float('-inf')
             best_action = None
-
             moves = list(range(DEFAULT_N_ACTIONS))
-            # Ordina mosse per killer moves e priorità euristica
-            moves = sorted(moves, key=lambda m: m in killer_action, reverse=True)
+            killer_moves = self.killer_moves.get(depth, [])
+            moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
 
             for action in moves:
-                g_copy = deepcopy(state)
-                g_copy.step([action, 99])  # Azione avversaria casuale
-                eval_score, _ = self.minimax(g_copy, depth - 1, alpha, beta, False)
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([action, 99])
+                if n_fainted(s[0].teams[0]) > n_fainted(g.teams[0]):
+                    continue
+
+                # Usa Monte Carlo per valutare la mossa
+                eval_score = self.monte_carlo_evaluation(s[0], action, True)
                 if eval_score > max_eval:
                     max_eval = eval_score
                     best_action = action
+
                 alpha = max(alpha, eval_score)
                 if beta <= alpha:
-                    if action not in killer_action:
-                        killer_action.append(action)
-                        if len(killer_action) > 2:  # Limita a 2 killer moves
-                            killer_action.pop(0)
+                    if action not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(action)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
                     break
-
-            self.killer_moves[depth] = killer_action
             return max_eval, best_action
 
         else:
             min_eval = float('inf')
             best_action = None
-
             moves = list(range(DEFAULT_N_ACTIONS))
-            # Ordina mosse per killer moves e priorità euristica
-            moves = sorted(moves, key=lambda m: m in killer_action, reverse=True)
+            killer_moves = self.killer_moves.get(depth, [])
+            moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
 
             for action in moves:
-                g_copy = deepcopy(state)
-                g_copy.step([99, action])  # Azione casuale del giocatore
-                eval_score, _ = self.minimax(g_copy, depth - 1, alpha, beta, True)
+                g_copy = deepcopy(g)
+                s, _, _, _, _ = g_copy.step([99, action])
+                if n_fainted(s[0].teams[1]) > n_fainted(g.teams[1]):
+                    continue
+
+                # Usa Monte Carlo per valutare la mossa
+                eval_score = self.monte_carlo_evaluation(s[0], action, False)
                 if eval_score < min_eval:
                     min_eval = eval_score
                     best_action = action
+
                 beta = min(beta, eval_score)
                 if beta <= alpha:
-                    if action not in killer_action:
-                        killer_action.append(action)
-                        if len(killer_action) > 2:  # Limita a 2 killer moves
-                            killer_action.pop(0)
+                    if action not in self.killer_moves[depth]:
+                        self.killer_moves[depth].append(action)
+                        if len(self.killer_moves[depth]) > 2:
+                            self.killer_moves[depth].pop(0)
                     break
-
-            self.killer_moves[depth] = killer_action
             return min_eval, best_action
 
-    def get_action(self, state):
+
+    def evaluate_switch(self, active_pokemon, opponent_pokemon, bench):
         """
-        Trova la migliore azione utilizzando Minimax con killer move heuristic.
+        Valuta se effettuare uno switch e quale Pokémon scegliere.
         """
-        _, best_action = self.minimax(state, self.max_depth, float('-inf'), float('inf'), True)
-        return best_action if best_action is not None else 0
+        best_switch = None
+        best_score = float('-inf')
 
+        for bench_pokemon in bench:
+            if bench_pokemon.is_fainted:  # Salta Pokémon esausti
+                continue
+            
+            # Calcola vulnerabilità e vantaggio contro l'avversario
+            vulnerability = TYPE_CHART_MULTIPLIER[opponent_pokemon.primary_type][bench_pokemon.primary_type]
+            effectiveness = TYPE_CHART_MULTIPLIER[bench_pokemon.primary_type][opponent_pokemon.primary_type]
 
+            # Valuta il punteggio: più è efficace contro l'avversario e meno è vulnerabile, meglio è
+            score = effectiveness - vulnerability
 
-class AggressiveMinimaxWithSwitchAndKiller(BattlePolicy):
-    def __init__(self, max_depth=4):
-        self.max_depth = max_depth
-        self.name = "Aggressive Minimax with Switch and Killer Moves"
-        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}
+            if score > best_score:
+                best_score = score
+                best_switch = bench_pokemon
 
-    def aggressive_eval(self, state):
-        """
-        Funzione di valutazione euristica basata sulla politica aggressiva.
-        """
-        mine = state.teams[0].active
-        opp = state.teams[1].active
+        # Effettua lo switch solo se c'è un'opzione migliore rispetto all'attivo
+        current_vulnerability = TYPE_CHART_MULTIPLIER[opponent_pokemon.primary_type][active_pokemon.primary_type]
 
-        # Penalità per lo stato corrente (switch obbligatorio)
-        if opp.is_super_effective_against(mine):
-            return -float('inf')  # Forza lo switch
+        if best_switch and (best_score > 1.0 or current_vulnerability > 1.0):
+            return best_switch
 
-        # Miglior danno possibile
-        best_damage = 0
-        for move in mine.moves:
-            if move.pp > 0 and not move.has_negative_effect_on_user():
-                damage = calculate_damage(move, mine, opp)
-                if mine.speed > opp.speed:  # Bonus velocità
-                    damage *= 1.1
-                best_damage = max(best_damage, damage)
-
-        return best_damage
-
-    def get_switch_action(self, state):
-        """
-        Restituisce lo switch a un Pokémon che sia super efficace contro l'avversario.
-        """
-        opp = state.teams[1].active
-        for i, pokemon in enumerate(state.teams[0].reserve):
-            if pokemon.is_super_effective_against(opp):
-                return i + 1  # L'azione di switch è rappresentata dagli indici successivi alle mosse
         return None
 
-    def minimax(self, state, depth, alpha, beta, is_maximizing_player):
+
+    def evaluate_status_and_weather(self, active_pokemon, opponent_pokemon, weather):
         """
-        Minimax con pruning alpha-beta, killer move heuristic e switch.
+        Valuta lo stato e il meteo per decidere se fare uno switch.
         """
-        if depth == 0 or state.is_terminal():
-            return self.aggressive_eval(state), None
+        # Valuta se il meteo è sfavorevole
+        if weather:
+            if weather.is_unfavorable_for(active_pokemon) and not weather.is_unfavorable_for(opponent_pokemon):
+                return True  # Suggerisce uno switch
 
-        killer_key = (state.hash(), depth)
-        killer_action = self.killer_moves.get(depth, [])
+        # Valuta se lo status del Pokémon avversario può essere sfruttato
+        if opponent_pokemon.status in [5, 4, 3, 1]:  # Paralizzato, addormentato, congelato e confuso
+            return False  # Non switchare, puoi sfruttare lo status avversario
 
-        if is_maximizing_player:
-            max_eval = float('-inf')
-            best_action = None
+        return False  # Non cambiare in condizioni neutre
 
-            # Genera le azioni: mosse + eventuale switch
-            moves = list(range(DEFAULT_N_ACTIONS))
-            switch_action = self.get_switch_action(state)
-            if switch_action is not None:
-                moves.append(switch_action)
 
-            # Ordina mosse per killer moves e priorità euristica
-            moves = sorted(moves, key=lambda m: m in killer_action, reverse=True)
+    def get_action(self, g):
+        """
+        Calcola la migliore azione basata su minimax, con considerazioni avanzate per switch e attacchi.
+        """
+        active_pokemon = g.teams[0].active
+        opponent_pokemon = g.teams[1].active
+        bench = g.teams[0].team[1:]  # Pokémon in panchina
+        weather = g.weather
 
-            for action in moves:
-                g_copy = deepcopy(state)
-                if action >= DEFAULT_N_ACTIONS:  # Azione di switch
-                    g_copy.switch([action - DEFAULT_N_ACTIONS, 99])
-                else:  # Azione normale
-                    g_copy.step([action, 99])
+        # 1. Valuta se fare uno switch
+        if self.evaluate_status_and_weather(active_pokemon, opponent_pokemon, weather):
+            best_switch = self.evaluate_switch(active_pokemon, opponent_pokemon, bench)
+            if best_switch:
+                return f"switch to {best_switch.name}"
 
-                eval_score, _ = self.minimax(g_copy, depth - 1, alpha, beta, False)
-                if eval_score > max_eval:
-                    max_eval = eval_score
-                    best_action = action
-                alpha = max(alpha, eval_score)
-                if beta <= alpha:
-                    if action not in killer_action:
-                        killer_action.append(action)
-                        if len(killer_action) > 2:  # Limita a 2 killer moves
-                            killer_action.pop(0)
-                    break
+        # 2. Trova la migliore mossa
+        best_move = None
+        best_score = float('-inf')
 
-            self.killer_moves[depth] = killer_action
-            return max_eval, best_action
+        for move in active_pokemon.moves:
+            if move:
+                score = self.evaluate_move(move, active_pokemon, opponent_pokemon)
+                if score > best_score:
+                    best_score = score
+                    best_move = move
 
-        else:
-            min_eval = float('inf')
-            best_action = None
+        if best_move:
+            return best_move.index
 
-            # Genera le azioni: mosse + eventuale switch
-            moves = list(range(DEFAULT_N_ACTIONS))
-            switch_action = self.get_switch_action(state)
-            if switch_action is not None:
-                moves.append(switch_action)
+        # 3. in caso non trovi nessuna mossa che possa andare bene allora va prendere una mossa random
+        return random.randint(0, DEFAULT_N_ACTIONS - 1)
 
-            # Ordina mosse per killer moves e priorità euristica
-            moves = sorted(moves, key=lambda m: m in killer_action, reverse=True)
 
-            for action in moves:
-                g_copy = deepcopy(state)
-                if action >= DEFAULT_N_ACTIONS:  # Azione di switch
-                    g_copy.switch([99, action - DEFAULT_N_ACTIONS])
-                else:  # Azione normale
-                    g_copy.step([99, action])
 
-                eval_score, _ = self.minimax(g_copy, depth - 1, alpha, beta, True)
-                if eval_score < min_eval:
-                    min_eval = eval_score
-                    best_action = action
-                beta = min(beta, eval_score)
-                if beta <= alpha:
-                    if action not in killer_action:
-                        killer_action.append(action)
-                        if len(killer_action) > 2:  # Limita a 2 killer moves
-                            killer_action.pop(0)
-                    break
 
-            self.killer_moves[depth] = killer_action
-            return min_eval, best_action
+
+
+
+class AggressivePolicy:
+    def __init__(self):
+        self.name = "Aggressive Policy"
+
+    def requires_encode(self) -> bool:
+        return False
+
+    def close(self):
+        pass
+
+
+    def evaluate_move(self, move, active_pokemon, opponent_pokemon):
+        """
+        Valuta una mossa considerando la STAB, l'efficacia e la velocità.
+        """
+        effectiveness = move.type.effectiveness(opponent_pokemon.type)
+        stab = 1.5 if move.type in active_pokemon.type else 1.0
+        speed_priority = 1 if active_pokemon.speed > opponent_pokemon.speed else -1
+        return move.power * effectiveness * stab + speed_priority * 10
+
+    def evaluate_switch(self, active_pokemon, opponent_pokemon, bench):
+        """
+        Valuta se effettuare uno switch e quale Pokémon usare.
+        """
+        best_pokemon = None
+        best_score = -float('inf')
+        for bench_pokemon in bench:
+            if not bench_pokemon.fainted:
+                effectiveness_against_opponent = bench_pokemon.type.effectiveness(opponent_pokemon.type)
+                vulnerability_to_opponent = opponent_pokemon.type.effectiveness(bench_pokemon.type)
+                score = effectiveness_against_opponent - vulnerability_to_opponent
+                if score > best_score:
+                    best_score = score
+                    best_pokemon = bench_pokemon
+        return best_pokemon
 
     def get_action(self, state):
         """
-        Trova la migliore azione utilizzando Minimax con switch e killer move heuristic.
+        Restituisce la mossa o lo switch migliore.
         """
-        _, best_action = self.minimax(state, self.max_depth, float('-inf'), float('inf'), True)
-        return best_action if best_action is not None else 0
+        active_pokemon = state.teams[0].active
+        opponent_pokemon = state.teams[1].active
+        bench = state.teams[0].team[1:]  # Pokémon in panchina
+
+        # Verifica se è necessario uno switch
+        opponent_effectiveness = opponent_pokemon.type.effectiveness(active_pokemon.type)
+        if opponent_effectiveness > 1:  # Avversario è super efficace
+            switch_pokemon = self.evaluate_switch(active_pokemon, opponent_pokemon, bench)
+            if switch_pokemon:
+                return f"switch to {switch_pokemon.name}"
+
+        # Valuta le mosse disponibili
+        best_move = None
+        best_score = -float('inf')
+        for move in active_pokemon.moves:
+            if move.pp > 0:  # Considera solo mosse con PP disponibili
+                score = self.evaluate_move(move, active_pokemon, opponent_pokemon)
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+
+        return best_move.index if best_move else random.choice(range(len(active_pokemon.moves)))
+
