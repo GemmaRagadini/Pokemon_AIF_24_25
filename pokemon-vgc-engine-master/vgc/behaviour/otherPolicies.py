@@ -29,7 +29,7 @@ class MyMinimax(BattlePolicy):
         if depth == 0:
             # Valuta lo stato corrente.
             try:
-                evaluation = evalFunctions.game_state_eval(g, depth)
+                evaluation = evalFunctions.my_eval_fun(g,depth)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -100,7 +100,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
     def minimax(self, g, depth, alpha, beta, is_maximizing_player):
         if depth == 0:
             try:
-                evaluation = evalFunctions.game_state_eval(g, depth)
+                evaluation = evalFunctions.game_state_eval(g,depth)
             except Exception as e:
                 import traceback
                 traceback.print_exc() 

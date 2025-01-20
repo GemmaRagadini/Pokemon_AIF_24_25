@@ -37,7 +37,7 @@ def different_teams(n_epochs,le:BattleEcosystem,roster):
         # cm1.team = RandomTeamFromRoster(roster).get_team()
         cm1.team = team
         le.register(cm1)
-        cm2 = CompetitorManager(MyCompetitor1("Player 1"))
+        cm2 = CompetitorManager(MyCompetitor2("Player 1"))
         team2 = RandomTeamFromRoster(roster).get_team()
         cm2.team = team2
         # cm2.team = RandomTeamFromRoster(roster).get_team()
@@ -66,7 +66,7 @@ def same_team(n_epochs, le:BattleEcosystem,roster):
         cm1 = CompetitorManager(MyCompetitor0("Player 0"))
         cm1.team = RandomTeamFromRoster(roster).get_team()
         le.register(cm1)
-        cm2 = CompetitorManager(MyCompetitor1("Player 1"))
+        cm2 = CompetitorManager(MyCompetitor2("Player 1"))
         cm2.team = RandomTeamFromRoster(roster).get_team()
         le.register(cm2)
         # Esegui una singola epoca
@@ -80,6 +80,33 @@ def same_team(n_epochs, le:BattleEcosystem,roster):
     time = end_time-start_time
   
     return time,wins_player0,(wins_player0/n_epochs)*100, cm1.competitor.battle_policy.name
+
+
+def same_team(n_epochs, le:BattleEcosystem,roster):
+    
+    wins_player0 = 0
+    wins_player1 = 0
+    start_time = t.time()
+
+    for i in range(n_epochs): 
+        cm1 = CompetitorManager(MyCompetitor0("Player 0"))
+        cm1.team = RandomTeamFromRoster(roster).get_team()
+        le.register(cm1)
+        cm2 = CompetitorManager(MyCompetitor2("Player 1"))
+        cm2.team = RandomTeamFromRoster(roster).get_team()
+        le.register(cm2)
+        # Esegui una singola epoca
+        le.run(1)
+        # Conta le vittorie di Player 0 e Player 1
+        wins_player0 += le.win_counts[cm1]
+        wins_player1 += le.win_counts[cm2]        
+        le.unregister(cm1)
+        le.unregister(cm2)
+    end_time = t.time()
+    time = end_time-start_time
+  
+    return time,wins_player0,(wins_player0/n_epochs)*100, cm1.competitor.battle_policy.name
+
 
 
 def Tournament():
@@ -125,42 +152,22 @@ def Tournament():
                 break
 
     # play the first 4 matches and cadidate for the others
-    matches['semifinal'] = []
     matches['final'] = []
     winner=None
 
     for i in matches.keys():
 
-        if i == 'semifinal': #here we play the first semifinal
-            print( f'the first semifinal between {matches[i][0].competitor.battle_policy.name} and {matches[i][1].competitor.battle_policy.name}')
-            input()
-            le.register(matches[i][0])
-            le.register(matches[i][1])
-            le.run(10)
-            if le.win_counts[matches[i][0]] > le.win_counts[matches[i][1]]:
-                print(f" {matches[i][0].competitor.battle_policy.name} wins the semifinal {le.win_counts[matches[i][0]]} games on 10 and has a win rate of {le.win_counts[matches[i][0]]/10}")
-                input()
-                le.unregister(matches[i][1])
-                
-                matches["final"].append(matches[i][0])
-                le.unregister(matches[i][0])
-
-            else :
-                print(f" {matches[i][1].competitor.battle_policy.name} wins the semifinal with {le.win_counts[matches[i][1]]} games on 10 and has a win rate of {le.win_counts[matches[i][1]]/10}")
-                input()
-                le.unregister(matches[i][0])
-                matches["final"].append(matches[i][1])
-                le.unregister(matches[i][1])
-
-        elif i == 'final': #here we play the final
+        if i == 'final': #here we play the final
             print( f'the final between {matches[i][0].competitor.battle_policy.name} and {matches[i][1].competitor.battle_policy.name}')
             input()
 
             le.register(matches[i][0])
             le.register(matches[i][1])
+            matches[i][0].team = team
+            matches[i][1].team = team
             le.run(10)
             if le.win_counts[matches[i][0]] > le.win_counts[matches[i][1]]:
-                print(f" {matches[i][0].name} wins the final with {le.win_counts[matches[i][0]]} games on 10 and has a win rate of {le.win_counts[matches[i][0]]/10}")
+                print(f" {matches[i][0].competitor.battle_policy.name} wins the final with {le.win_counts[matches[i][0]]} games on 10 and has a win rate of {le.win_counts[matches[i][0]]/10}")
                 input()
                 le.unregister(matches[i][1])
                 winner = matches[i][0]
@@ -179,13 +186,15 @@ def Tournament():
             input()
             le.register(matches[i][0])
             le.register(matches[i][1])
+            matches[i][0].team = team
+            matches[i][1].team = team
             le.run(10)
             if le.win_counts[matches[i][0]] > le.win_counts[matches[i][1]]:
                 print(f" {matches[i][0].competitor.battle_policy.name} wins {le.win_counts[matches[i][0]]} games on 10 and has a win rate of {le.win_counts[matches[i][0]]/10}")
                 input()
                 le.unregister(matches[i][1])
-                if len(matches["semifinal"])<2:
-                    matches["semifinal"].append(matches[i][0])
+                if len(matches["final"]) < 2:
+                    matches["final"].append(matches[i][0])
                     le.unregister(matches[i][0])
                 else:
                     pass
@@ -194,8 +203,8 @@ def Tournament():
                 print(f" {matches[i][1].competitor.battle_policy.name} wins {le.win_counts[matches[i][1]]} games on 10 and has a win rate of {le.win_counts[matches[i][1]]/10}")
                 input()
                 le.unregister(matches[i][0])
-                if len(matches["semifinal"]) <2:
-                    matches["semifinal"].append(matches[i][1])
+                if len(matches["final"]) < 2:
+                    matches["final"].append(matches[i][1])
                     le.unregister(matches[i][1])
                 else:
                     pass
