@@ -23,7 +23,7 @@ from typing import Tuple, List, Dict
 import heapq
 import copy
 import sys 
-import termios
+
 
 import numpy as np
 from vgc.behaviour import BattlePolicy
