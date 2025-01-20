@@ -1,5 +1,5 @@
 import time as t
-from Example_Competitor import ExampleCompetitor, MyCompetitor0, MyCompetitor1, MyCompetitor2, TerminalExampleCompetitor, MyCompetitor3, MyCompetitor4, MyCompetitor5, MyCompetitor6, MyCompetitor7
+from Example_Competitor import MyCompetitor0, MyCompetitor1, MyCompetitor2, MyCompetitor3, MyCompetitor4
 from vgc.balance.meta import StandardMetaData
 from vgc.competition.Competitor import CompetitorManager
 from vgc.ecosystem.BattleEcosystem import BattleEcosystem
@@ -23,7 +23,6 @@ def main():
 
     print(f"Player 0 con diverso team con {policy_name1} ha vinto: {wins_0_different} partite su {n_epochs}, win rate {rate1}, tempo impiegato {times1}")
     print(f"Player 1 stesso team con {policy_name2} ha vinto: {wins_0_same} partite su {n_epochs}, win rate {rate2}, tempo impiegato {times2}")
-
 
    
 
@@ -109,24 +108,11 @@ def Tournament():
     #minimax_killer.team = RandomTeamFromRoster(roster).get_team()
     minimax_killer.team = team
 
-    minimax_sorted_killer = CompetitorManager(MyCompetitor4("Player 4"))
-    #minimax_sorted_killer.team = RandomTeamFromRoster(roster).get_team()
-    minimax_sorted_killer.team = team
-
-    minimax_sorted_killer_transpose = CompetitorManager(MyCompetitor5("Player 5"))
-    #minimax_sorted_killer_transpose.team = RandomTeamFromRoster(roster).get_team()
-    minimax_sorted_killer_transpose.team = team
-
-    montecarlo_minimax = CompetitorManager(MyCompetitor6("Player 6"))
+    montecarlo_minimax = CompetitorManager(MyCompetitor4("Player 6"))
     #montecarlo_minimax.team = RandomTeamFromRoster(roster).get_team()
     montecarlo_minimax.team = team
 
-    aggressive_montecarlo_minimax = CompetitorManager(MyCompetitor7("Player 7"))
-    #aggressive_montecarlo_minimax.team = RandomTeamFromRoster(roster).get_team()
-    aggressive_montecarlo_minimax.team = team
-
-
-    trainers= [randomtrainer,Pokebob,minimax,minimax_killer,minimax_sorted_killer,minimax_sorted_killer_transpose,montecarlo_minimax,aggressive_montecarlo_minimax]
+    trainers= [randomtrainer,Pokebob,minimax,minimax_killer, montecarlo_minimax]
     
     #first 4 matches
     matches={'first':[], 'second':[] ,'thrid': [], 'fourth':[]}
