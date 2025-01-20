@@ -15,7 +15,7 @@ class MyCompetitor0(Competitor):
 
     def __init__(self, name: str = "My Example"):
         self._name = name
-        self._battle_policy = MyMinimax()
+        self._battle_policy = MyPolicy()
         self._team_selection_policy = FirstEditionTeamSelectionPolicy()
         self._team_build_policy = RandomTeamBuilder()
 
