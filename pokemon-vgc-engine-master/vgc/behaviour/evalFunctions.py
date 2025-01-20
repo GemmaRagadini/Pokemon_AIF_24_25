@@ -61,7 +61,7 @@ def my_eval_fun(s:GameState, depth):
     matchup = evaluate_matchup(my_active.type, opp_active.type, list(map(lambda m: m.type, my_active.moves))) # in [0,2]
     eval_hp = game_state_eval(s,depth) + 4 # circa in [0-5]
     max_damage = maxDamage(my_active, opp_active.type, attack_stage, defense_stage, s.weather) # in [0,140]
-    return max_damage/140 + matchup/2 + eval_hp
+    return max_damage/70 + matchup/2 + eval_hp
 
 
 def maxDamage(my_active: Pkm, opp_active_type:PkmType, attack_stage: int, defense_stage: int,weather: WeatherCondition ): 

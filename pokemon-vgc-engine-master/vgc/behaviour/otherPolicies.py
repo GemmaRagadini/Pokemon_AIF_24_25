@@ -27,42 +27,64 @@ class MyMinimax(BattlePolicy):
 
         if depth == 0:
             # Valuta lo stato corrente.
-            return evalFunctions.my_eval_fun(g, depth), None
+            try:
+                evaluation = evalFunctions.my_eval_fun(g, depth)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+            
+            return evaluation , None
 
         if is_maximizing_player:
             max_eval = float('-inf')
             best_action = None
-            for i in range(DEFAULT_N_ACTIONS):
-                g_copy = deepcopy(g)
-                s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida,che non cambia la situazione
-                if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]): 
-                    continue # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
-                eval_score, _ = self.minimax(s[0], depth - 1, False)
-                if eval_score > max_eval:
-                    max_eval = eval_score
-                    best_action = i
+            try:
+                for i in range(DEFAULT_N_ACTIONS):
+                    g_copy = deepcopy(g)
+                    s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida,che non cambia la situazione
+                    if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]): 
+                        continue # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
+                    eval_score, _ = self.minimax(s[0], depth - 1, False)
+                    if eval_score > max_eval:
+                        max_eval = eval_score
+                        best_action = i
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+
             return max_eval, best_action
 
         else:  # Avversario minimizzante
             min_eval = float('inf')
             best_action = None
-            for j in range(DEFAULT_N_ACTIONS):
-                g_copy = deepcopy(g)
-                s, _, _, _, _ = g_copy.step([99, j])  # Il giocatore non cambia azione (azione non valida)
-                # Ignora gli stati in cui il numero di Pokémon sconfitti dell'avversario aumenta.
-                if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
-                    continue
-                eval_score, _ = self.minimax(s[0], depth - 1, True)
-                if eval_score < min_eval:
-                    min_eval = eval_score
-                    best_action = j
+            try:
+                for j in range(DEFAULT_N_ACTIONS):
+                    g_copy = deepcopy(g)
+                    s, _, _, _, _ = g_copy.step([99, j])  # Il giocatore non cambia azione (azione non valida)
+                    # Ignora gli stati in cui il numero di Pokémon sconfitti dell'avversario aumenta.
+                    if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
+                        continue
+                    eval_score, _ = self.minimax(s[0], depth - 1, True)
+                    if eval_score < min_eval:
+                        min_eval = eval_score
+                        best_action = j
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+
             return min_eval, best_action
+
 
     def get_action(self, g) -> int:
         """
         Trova la migliore azione da intraprendere per il giocatore massimizzante.
         """
-        _, best_action = self.minimax(g, self.max_depth, True)
+        try:
+            _, best_action = self.minimax(g, self.max_depth, True)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            
         return best_action if best_action is not None else 0
 
 

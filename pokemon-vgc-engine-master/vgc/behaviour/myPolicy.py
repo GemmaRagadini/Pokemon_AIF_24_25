@@ -68,18 +68,23 @@ class MyPolicy(BattlePolicy):
         # considera il cambio pokemon
         matchup: List[float] = []
         not_fainted = False
-        for j in range(len(bench)):
-            if bench[j].hp == 0.0:
-                matchup.append(0.0)
-            else:
-                not_fainted = True
-                matchup.append(
-                    evalFunctions.evaluate_matchup(bench[j].type, opp_active_pkm.type, list(map(lambda m: m.type, bench[j].moves))))
-    
-        best_switch_matchup = int(np.max(matchup))
-        best_switch = np.argmax(matchup)
-        current_matchup = evalFunctions.evaluate_matchup(active_pkm.type, opp_active_pkm.type,list(map(lambda m: m.type, active_pkm.moves)))
+
+        try:
+            for j in range(len(bench)):
+                if bench[j].hp == 0.0:
+                    matchup.append(0.0)
+                else:
+                    not_fainted = True
+                    matchup.append(
+                        evalFunctions.evaluate_matchup(bench[j].type, opp_active_pkm.type, list(map(lambda m: m.type, bench[j].moves))))
         
+            best_switch_matchup = int(np.max(matchup))
+            best_switch = np.argmax(matchup)
+            current_matchup = evalFunctions.evaluate_matchup(active_pkm.type, opp_active_pkm.type,list(map(lambda m: m.type, active_pkm.moves)))
+        except Exception as e: 
+            import traceback
+            traceback.print_exc()
+            
         if not_fainted and best_switch_matchup >= current_matchup+1:
             return best_switch + 4
     

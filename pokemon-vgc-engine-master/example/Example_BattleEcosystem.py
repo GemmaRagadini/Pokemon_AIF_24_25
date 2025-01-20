@@ -16,7 +16,7 @@ def main():
     roster = RandomPkmRosterGenerator().gen_roster()
     meta_data = StandardMetaData()
     le = BattleEcosystem(meta_data, debug=True)
-    n_epochs = 20
+    n_epochs = 1
  
     times1, wins_0_different,rate1, policy_name1 =different_teams(n_epochs,le,roster)
     times2, wins_0_same, rate2, policy_name2 =same_team(n_epochs,le,roster)
