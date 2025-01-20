@@ -16,7 +16,7 @@ def main():
     roster = RandomPkmRosterGenerator().gen_roster()
     meta_data = StandardMetaData()
     le = BattleEcosystem(meta_data, debug=True)
-    n_epochs = 1
+    n_epochs = 10
  
     times1, wins_0_different,rate1, policy_name1 =different_teams(n_epochs,le,roster)
     times2, wins_0_same, rate2, policy_name2 =same_team(n_epochs,le,roster)
@@ -108,11 +108,11 @@ def Tournament():
     #minimax_killer.team = RandomTeamFromRoster(roster).get_team()
     minimax_killer.team = team
 
-    montecarlo_minimax = CompetitorManager(MyCompetitor4("Player 6"))
-    #montecarlo_minimax.team = RandomTeamFromRoster(roster).get_team()
-    montecarlo_minimax.team = team
+    # montecarlo_minimax = CompetitorManager(MyCompetitor4("Player 6"))
+    # #montecarlo_minimax.team = RandomTeamFromRoster(roster).get_team()
+    # montecarlo_minimax.team = team
 
-    trainers= [randomtrainer,Pokebob,minimax,minimax_killer, montecarlo_minimax]
+    trainers= [randomtrainer,Pokebob,minimax,minimax_killer] #, montecarlo_minimax]
     
     #first 4 matches
     matches={'first':[], 'second':[] ,'thrid': [], 'fourth':[]}
@@ -227,10 +227,6 @@ def Tournament():
 
     print(f'The winner is {winner.competitor.battle_policy.name}')
     
-
-
-
-
 
 
 if __name__ == '__main__':
