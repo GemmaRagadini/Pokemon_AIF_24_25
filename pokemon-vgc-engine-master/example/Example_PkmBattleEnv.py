@@ -3,7 +3,7 @@ from vgc.datatypes.Objects import PkmTeam
 from vgc.engine.PkmBattleEnv import PkmBattleEnv
 
 
-def main():
+def main():  
     a0 = RandomPlayer()
     a1 = RandomPlayer()
     t0 = PkmTeam()

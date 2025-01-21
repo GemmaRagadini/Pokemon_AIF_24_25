@@ -25,20 +25,26 @@ class BattleEcosystem:
         self.n_battles = n_battles
         self.pairings_strategy = pairings_strategy
         self.update_meta = update_meta
+        ##
+        self.win_counts = {}  # Dizionario per tracciare le vittorie di ogni CompetitorManager
 
     def register(self, cm: CompetitorManager):
         if cm not in self.competitors:
             self.competitors.append(cm)
+            self.win_counts[cm] = 0  # Inizializza il contatore delle vittorie per il nuovo CompetitorManager
+            
 
     def unregister(self, cm: CompetitorManager):
         self.competitors.remove(cm)
+        del self.win_counts[cm]  # Rimuove il CompetitorManager dal dizionario delle vittorie
 
     def run(self, n_epochs: int):
         epoch = 0
         while epoch < n_epochs:
             self.__run_matches(self.__schedule_matches())
             epoch += 1
-
+        # self.print_results()  # Stampa i risultati dopo tutti gli epoch
+        
     def __schedule_matches(self) -> List[Tuple[CompetitorManager, CompetitorManager]]:
         n_matches = len(self.competitors) // 2
         matches: List[Tuple[CompetitorManager, CompetitorManager]] = []
@@ -56,4 +62,13 @@ class BattleEcosystem:
             match = BattleMatch(cm0, cm1, self.n_battles, self.debug, self.render, meta_data=self.meta_data,
                                 update_meta=self.update_meta)
             match.run()
+            winner = cm0 if match.winner() == 0 else cm1
+            self.win_counts[winner] += 1  # Incrementa il contatore delle vittorie per il vincitore
             cm0.elo, cm1.elo = elo_rating(cm0.elo, cm1.elo, 1 if match.winner() == 0 else 0)
+
+
+    # def print_results(self):
+    #     # Stampa i risultati di tutte le vittorie
+    #     print("\nRisultati:")
+    #     for cm, wins in self.win_counts.items():
+    #         print(f"{cm.competitor.name} con algoritmo {cm.competitor.battle_policy.name} ha vinto {wins} partite.")

@@ -69,13 +69,15 @@ class BattleMatch:
             team1.hide_pkm()
             b += 1
             if self.debug:
-                print('BATTLE ' + str(b) + '\n')
+                pass
+                # print('BATTLE ' + str(b) + '\n')
             winner = self._run_battle(a0, a1, battle_team0, battle_team1, battle_team1_p, battle_team0_p)
             self.wins[winner] += 1
             if self.wins[winner] > self.n_battles // 2:
                 break
         if self.debug:
-            print('MATCH RESULTS ' + str(self.wins) + '\n')
+            pass
+            # print('MATCH RESULTS ' + str(self.wins) + '\n')
         a0.close()
         a1.close()
         if self.update_meta:
@@ -142,7 +144,8 @@ class RandomTeamsBattleMatch(BattleMatch):
             team0 = self.gen.get_team().get_battle_team([0, 1, 2])
             team1 = self.gen.get_team().get_battle_team([0, 1, 2])
             if self.debug:
-                print('BATTLE\n')
+                pass
+                # print('BATTLE\n')
             winner0 = self._run_battle(a0, a1, team0, team1)
             self.wins[winner0] += 1
             winner1 = self._run_battle(a0, a1, team1, team0)
@@ -150,7 +153,8 @@ class RandomTeamsBattleMatch(BattleMatch):
             tie = self.wins[0] == self.wins[1]
             n_runs += 1
         if self.debug:
-            print('MATCH RESULTS ' + str(self.wins) + '\n')
+            pass
+            # print('MATCH RESULTS ' + str(self.wins) + '\n')
         a0.close()
         a1.close()
         self.finished = True

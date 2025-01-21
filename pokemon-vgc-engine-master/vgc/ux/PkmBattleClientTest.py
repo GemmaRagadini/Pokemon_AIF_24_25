@@ -1,10 +1,10 @@
 from multiprocessing.connection import Client
-from vgc.behaviour.BattlePolicies import RandomPlayer, GUIPlayer
+from vgc.behaviour.BattlePolicies import Minimax, GUIPlayer
 from vgc.engine.PkmBattleEnv import PkmBattleEnv
 from vgc.util.generator.PkmTeamGenerators import RandomTeamGenerator
 
 a0 = GUIPlayer()
-a1 = RandomPlayer()
+a1 = Minimax()
 address = ('localhost', 6000)
 gen = RandomTeamGenerator()
 full_team0 = gen.get_team()

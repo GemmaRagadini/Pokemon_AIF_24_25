@@ -1,18 +1,16 @@
 import tkinter
+import numpy as np
 from copy import deepcopy
 from threading import Thread, Event
 from tkinter import CENTER, DISABLED, NORMAL
 from types import CellType
 from typing import List
-
-import numpy as np
+from random import random
 from customtkinter import CTk, CTkButton, CTkRadioButton, CTkLabel
-
-from vgc.behaviour import BattlePolicy
+from vgc.behaviour import BattlePolicy, evalFunctions
 from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE, TYPE_CHART_MULTIPLIER, DEFAULT_N_ACTIONS
 from vgc.datatypes.Objects import GameState, PkmTeam
-from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition
-
+from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition, PkmEntryHazard
 
 class RandomPlayer(BattlePolicy):
     """
@@ -25,26 +23,10 @@ class RandomPlayer(BattlePolicy):
         self.n_actions: int = n_moves + n_switches
         self.pi: List[float] = ([(1. - switch_probability) / n_moves] * n_moves) + (
                 [switch_probability / n_switches] * n_switches)
+        self.name = "Random Player"
 
-    def get_action(self, g: GameState) -> int:
+    def get_action(self, g: GameState) -> int:      
         return np.random.choice(self.n_actions, p=self.pi)
-
-
-def estimate_damage(move_type: PkmType, pkm_type: PkmType, move_power: float, opp_pkm_type: PkmType,
-                    attack_stage: int, defense_stage: int, weather: WeatherCondition) -> float:
-    stab = 1.5 if move_type == pkm_type else 1.
-    if (move_type == PkmType.WATER and weather == WeatherCondition.RAIN) or (
-            move_type == PkmType.FIRE and weather == WeatherCondition.SUNNY):
-        weather = 1.5
-    elif (move_type == PkmType.WATER and weather == WeatherCondition.SUNNY) or (
-            move_type == PkmType.FIRE and weather == WeatherCondition.RAIN):
-        weather = .5
-    else:
-        weather = 1.
-    stage_level = attack_stage - defense_stage
-    stage = (stage_level + 2.) / 2 if stage_level >= 0. else 2. / (np.abs(stage_level) + 2.)
-    damage = TYPE_CHART_MULTIPLIER[move_type][opp_pkm_type] * stab * weather * stage * move_power
-    return damage
 
 
 class OneTurnLookahead(BattlePolicy):
@@ -71,7 +53,7 @@ class OneTurnLookahead(BattlePolicy):
         # get most damaging move from my active pkm
         damage: List[float] = []
         for move in my_active.moves:
-            damage.append(estimate_damage(move.type, my_active.type, move.power, opp_active_type,
+            damage.append(evalFunctions.estimate_damage(move.type, my_active.type, move.power, opp_active_type,
                                           my_attack_stage, opp_defense_stage, weather))
 
         return int(np.argmax(damage))  # use active pkm best damaging move
@@ -111,7 +93,7 @@ class TypeSelector(BattlePolicy):
         # get most damaging move from my active pokémon
         damage: List[float] = []
         for move in my_active.moves:
-            damage.append(estimate_damage(move.type, my_active.type, move.power, opp_active_type,
+            damage.append(evalFunctions.estimate_damage(move.type, my_active.type, move.power, opp_active_type,
                                           my_attack_stage, opp_defense_stage, weather))
         move_id = int(np.argmax(damage))
 
@@ -165,6 +147,7 @@ def game_state_eval(s: GameState, depth):
     mine = s.teams[0].active
     opp = s.teams[1].active
     return mine.hp / mine.max_hp - 3 * opp.hp / opp.max_hp - 0.3 * depth
+
 
 
 class BreadthFirstSearch(BattlePolicy):
@@ -225,6 +208,7 @@ class Minimax(BattlePolicy):
 
     def __init__(self, max_depth: int = 4):
         self.max_depth = max_depth
+        self.name = 'Minimax'
 
     def get_action(self, g) -> int:  # g: PkmBattleEnv
         root: BFSNode = BFSNode()
@@ -343,7 +327,7 @@ class TunedTreeTraversal(BattlePolicy):
     def __init__(self, max_depth: int = 4):
         self.core_agent: BattlePolicy = TypeSelector()
         self.max_depth = max_depth
-
+        self.name = "TunedTreeTraversal"
     def get_action(self, g: GameState) -> int:  # g: PkmBattleEnv
         root: BFSNode = BFSNode()
         root.g = g
