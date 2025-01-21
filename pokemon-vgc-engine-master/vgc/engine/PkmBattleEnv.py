@@ -202,7 +202,8 @@ class PkmBattleEnv(Env, GameState):
 
     def render(self, mode='console'):
         if mode == 'console':
-            print(self.log)
+            # print(self.log)
+            pass
         elif mode == 'ux' and self.conn is not None:
             while len(self.commands) > 0:
                 self.conn.send(self.commands.pop(0))
