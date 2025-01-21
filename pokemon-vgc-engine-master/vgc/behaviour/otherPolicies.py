@@ -23,11 +23,11 @@ class MyMinimax(BattlePolicy):
 
     def minimax(self, g, depth, is_maximizing_player):
         """
-        Algoritmo Minimax classico.
+        Classic minimax
         """
 
         if depth == 0:
-            # Valuta lo stato corrente.
+            # Evaluate the current state
             try:
                 evaluation = evalFunctions.game_state_eval(g,depth)
             except Exception as e:
@@ -36,15 +36,15 @@ class MyMinimax(BattlePolicy):
             
             return evaluation , None
 
-        if is_maximizing_player:
+        if is_maximizing_player: # MAX
             max_eval = float('-inf')
             best_action = None
             try:
                 for i in range(DEFAULT_N_ACTIONS):
                     g_copy = deepcopy(g)
-                    s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida,che non cambia la situazione
-                    if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]): 
-                        continue # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
+                    s, _, _, _, _ = g_copy.step([i, 99])  # The opponent performs an invalid action that does not change the situation
+                    if evalFunctions.n_defeated(s[0].teams[0]) > evalFunctions.n_defeated(g.teams[0]): 
+                        continue # Ignore states where our number of defeated Pokémon increases
                     eval_score, _ = self.minimax(s[0], depth - 1, False)
                     if eval_score > max_eval:
                         max_eval = eval_score
@@ -55,15 +55,14 @@ class MyMinimax(BattlePolicy):
 
             return max_eval, best_action
 
-        else:  # Avversario minimizzante
+        else:  # MIN
             min_eval = float('inf')
             best_action = None
             try:
                 for j in range(DEFAULT_N_ACTIONS):
                     g_copy = deepcopy(g)
-                    s, _, _, _, _ = g_copy.step([99, j])  # Il giocatore non cambia azione (azione non valida)
-                    # Ignora gli stati in cui il numero di Pokémon sconfitti dell'avversario aumenta.
-                    if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
+                    s, _, _, _, _ = g_copy.step([99, j])  
+                    if evalFunctions.n_defeated(s[0].teams[1]) > evalFunctions.n_defeated(g.teams[1]):
                         continue
                     eval_score, _ = self.minimax(s[0], depth - 1, True)
                     if eval_score < min_eval:
@@ -78,7 +77,7 @@ class MyMinimax(BattlePolicy):
 
     def get_action(self, g) -> int:
         """
-        Trova la migliore azione da intraprendere per il giocatore massimizzante.
+        Find the best action for MAX
         """
         try:
             _, best_action = self.minimax(g, self.max_depth, True)
@@ -91,11 +90,13 @@ class MyMinimax(BattlePolicy):
 
 
 class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
-
+    """
+    Minimax algorithm with alpha beta pruning and killer moves optimization
+    """
     def __init__(self, max_depth: int = 5):
         self.max_depth = max_depth
         self.name = "Minimax with pruning alpha beta killer"
-        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Memorizza le killer moves per profondità
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  
 
     def minimax(self, g, depth, alpha, beta, is_maximizing_player):
         if depth == 0:
@@ -110,10 +111,9 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
             max_eval = float('-inf')
             best_action = None
 
-            # Ottieni le azioni disponibili
+            # Possible actions
             moves = list(range(DEFAULT_N_ACTIONS))
-
-            # Prioritizza le killer moves
+            # prioritizing killer moves
             killer_moves = self.killer_moves.get(depth, [])
             moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
 
@@ -121,7 +121,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
                 for i in moves:
                     g_copy = deepcopy(g)
                     s, _, _, _, _ = g_copy.step([i, 99])
-                    if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]):
+                    if evalFunctions.n_defeated(s[0].teams[0]) > evalFunctions.n_defeated(g.teams[0]):
                         continue
 
                     eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
@@ -131,7 +131,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
 
                     alpha = max(alpha, eval_score)
                     if beta <= alpha:
-                        # Aggiorna le killer moves
+                        # update killer moves
                         if i not in self.killer_moves[depth]:
                             self.killer_moves[depth].append(i)
                             if len(self.killer_moves[depth]) > 2:  
@@ -147,11 +147,9 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
             min_eval = float('inf')
             best_action = None
 
-            # Ottieni le azioni disponibili
             moves = list(range(DEFAULT_N_ACTIONS))
 
             try:
-                # Prioritizza le killer moves
                 killer_moves = self.killer_moves.get(depth, [])
                 moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
             except Exception as e:
@@ -162,7 +160,7 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
                 for j in moves:
                     g_copy = deepcopy(g)
                     s, _, _, _, _ = g_copy.step([99, j])
-                    if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
+                    if evalFunctions.n_defeated(s[0].teams[1]) > evalFunctions.n_defeated(g.teams[1]):
                         continue
 
                     eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
@@ -172,7 +170,6 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
 
                     beta = min(beta, eval_score)
                     if beta <= alpha:
-                        # Aggiorna le killer moves
                         if j not in self.killer_moves[depth]:
                             self.killer_moves[depth].append(j)
                             if len(self.killer_moves[depth]) > 2: 
@@ -196,11 +193,13 @@ class MyMinimaxWithAlphaBetaKiller(BattlePolicy):
 
 
 class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
-
+    """
+    Minimax algorithm with alpha beta pruning and killer moves optimization, using my_eval_fun
+    """
     def __init__(self, max_depth: int = 5):
         self.max_depth = max_depth
         self.name = "Minimax with pruning alpha beta killer and my eval"
-        self.killer_moves = {depth: [] for depth in range(max_depth + 1)}  # Memorizza le killer moves per profondità
+        self.killer_moves = {depth: [] for depth in range(max_depth + 1)} 
 
     def minimax(self, g, depth, alpha, beta, is_maximizing_player):
         if depth == 0:
@@ -215,10 +214,10 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
             max_eval = float('-inf')
             best_action = None
 
-            # Ottieni le azioni disponibili
+            # possible actions
             moves = list(range(DEFAULT_N_ACTIONS))
 
-            # Prioritizza le killer moves
+            # prioritizing killer moves
             killer_moves = self.killer_moves.get(depth, [])
             moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
 
@@ -226,7 +225,7 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
                 for i in moves:
                     g_copy = deepcopy(g)
                     s, _, _, _, _ = g_copy.step([i, 99])
-                    if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]):
+                    if evalFunctions.n_defeated(s[0].teams[0]) > evalFunctions.n_defeated(g.teams[0]):
                         continue
 
                     eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, False)
@@ -236,7 +235,7 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
 
                     alpha = max(alpha, eval_score)
                     if beta <= alpha:
-                        # Aggiorna le killer moves
+                        # update killer moves
                         if i not in self.killer_moves[depth]:
                             self.killer_moves[depth].append(i)
                             if len(self.killer_moves[depth]) > 2:  
@@ -251,12 +250,9 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
         else:
             min_eval = float('inf')
             best_action = None
-
-            # Ottieni le azioni disponibili
             moves = list(range(DEFAULT_N_ACTIONS))
 
             try:
-                # Prioritizza le killer moves
                 killer_moves = self.killer_moves.get(depth, [])
                 moves = sorted(moves, key=lambda move: move in killer_moves, reverse=True)
             except Exception as e:
@@ -267,7 +263,7 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
                 for j in moves:
                     g_copy = deepcopy(g)
                     s, _, _, _, _ = g_copy.step([99, j])
-                    if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
+                    if evalFunctions.n_defeated(s[0].teams[1]) > evalFunctions.n_defeated(g.teams[1]):
                         continue
 
                     eval_score, _ = self.minimax(s[0], depth - 1, alpha, beta, True)
@@ -277,7 +273,6 @@ class MyMinimaxWithAlphaBetaKiller_my_eval(BattlePolicy):
 
                     beta = min(beta, eval_score)
                     if beta <= alpha:
-                        # Aggiorna le killer moves
                         if j not in self.killer_moves[depth]:
                             self.killer_moves[depth].append(j)
                             if len(self.killer_moves[depth]) > 2: 
@@ -307,11 +302,11 @@ class MyMinimax_my_eval(BattlePolicy):
 
     def minimax(self, g, depth, is_maximizing_player):
         """
-        Algoritmo Minimax classico.
+        Classic minimax algorithm, using my_eval_fun
         """
 
         if depth == 0:
-            # Valuta lo stato corrente.
+            # evaluate current status 
             try:
                 evaluation = evalFunctions.my_eval_fun(g,depth)
             except Exception as e:
@@ -320,15 +315,15 @@ class MyMinimax_my_eval(BattlePolicy):
             
             return evaluation , None
 
-        if is_maximizing_player:
+        if is_maximizing_player: #MAX
             max_eval = float('-inf')
             best_action = None
             try:
                 for i in range(DEFAULT_N_ACTIONS):
                     g_copy = deepcopy(g)
-                    s, _, _, _, _ = g_copy.step([i, 99])  # L'avversario esegue un'azione non valida,che non cambia la situazione
-                    if evalFunctions.n_fainted(s[0].teams[0]) > evalFunctions.n_fainted(g.teams[0]): 
-                        continue # Ignora gli stati in cui il nostro numero di Pokémon sconfitti aumenta.
+                    s, _, _, _, _ = g_copy.step([i, 99])  
+                    if evalFunctions.n_defeated(s[0].teams[0]) > evalFunctions.n_defeated(g.teams[0]): 
+                        continue 
                     eval_score, _ = self.minimax(s[0], depth - 1, False)
                     if eval_score > max_eval:
                         max_eval = eval_score
@@ -339,15 +334,14 @@ class MyMinimax_my_eval(BattlePolicy):
 
             return max_eval, best_action
 
-        else:  # Avversario minimizzante
+        else: #MIN
             min_eval = float('inf')
             best_action = None
             try:
                 for j in range(DEFAULT_N_ACTIONS):
                     g_copy = deepcopy(g)
-                    s, _, _, _, _ = g_copy.step([99, j])  # Il giocatore non cambia azione (azione non valida)
-                    # Ignora gli stati in cui il numero di Pokémon sconfitti dell'avversario aumenta.
-                    if evalFunctions.n_fainted(s[0].teams[1]) > evalFunctions.n_fainted(g.teams[1]):
+                    s, _, _, _, _ = g_copy.step([99, j])  
+                    if evalFunctions.n_defeated(s[0].teams[1]) > evalFunctions.n_defeated(g.teams[1]):
                         continue
                     eval_score, _ = self.minimax(s[0], depth - 1, True)
                     if eval_score < min_eval:
@@ -362,7 +356,7 @@ class MyMinimax_my_eval(BattlePolicy):
 
     def get_action(self, g) -> int:
         """
-        Trova la migliore azione da intraprendere per il giocatore massimizzante.
+        Find the best action for MAX
         """
         try:
             _, best_action = self.minimax(g, self.max_depth, True)

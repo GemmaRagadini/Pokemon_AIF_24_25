@@ -5,7 +5,6 @@ from vgc.competition.Competitor import CompetitorManager
 from vgc.ecosystem.BattleEcosystem import BattleEcosystem
 from vgc.util.generator.PkmRosterGenerators import RandomPkmRosterGenerator
 from vgc.util.generator.PkmTeamGenerators import RandomTeamFromRoster
-from collections import defaultdict
 import sys
 
 N_PLAYERS = 2
@@ -18,12 +17,12 @@ def main():
     le = BattleEcosystem(meta_data, debug=True)
     n_epochs = 10
  
-    times1, wins_0_different,rate1, policy_name1 =different_teams(n_epochs,le,roster)
+    times1, wins_0_different,rate1, policy_name1 = SingleCombat(n_epochs,le,roster)
 
     print(f"Player 0 con {policy_name1} ha vinto: {wins_0_different} partite su {n_epochs}, win rate {rate1}, tempo impiegato {times1}")
    
 
-def different_teams(n_epochs, le:BattleEcosystem,roster):
+def SingleCombat(n_epochs, le:BattleEcosystem,roster):
     
     wins_player0 = 0
     wins_player1 = 0
@@ -37,9 +36,9 @@ def different_teams(n_epochs, le:BattleEcosystem,roster):
         cm2 = CompetitorManager(MyCompetitor1("Player 1"))
         cm2.team = RandomTeamFromRoster(roster).get_team()
         le.register(cm2)
-        # Esegui una singola epoca
+        # single epoch
         le.run(1)
-        # Conta le vittorie di Player 0 e Player 1
+        # counts wins of Player 0 and Player 1
         wins_player0 += le.win_counts[cm1]
         wins_player1 += le.win_counts[cm2]        
         le.unregister(cm1)
@@ -54,7 +53,6 @@ def different_teams(n_epochs, le:BattleEcosystem,roster):
 def Tournament():
 
     print("Let the Tournament begin")
-    print( "Trainers with same team")
 
     roster = RandomPkmRosterGenerator().gen_roster()
     meta_data = StandardMetaData()
@@ -70,12 +68,12 @@ def Tournament():
 
     scores = [0] * len(trainers) 
 
-    n_epochs = 10 # numero epoche per ogni scontro del girone
+    n_epochs = 10 # number epochs for each match
 
-    # girone all'italiana ogni allenatore con un team generato a caso per ogni battaglia
+    # italian tournament with each trainer having a randomly generated team for each battle
     print("Tournament")
     for i in range(len(trainers)):
-        for j in range(i + 1, len(trainers)):  # Evita partite duplicate
+        for j in range(i + 1, len(trainers)):  # Avoid duplicate matches
             print(f"Begin Match between {trainers[i].competitor.battle_policy.name} and {trainers[j].competitor.battle_policy.name}")
             wins_player0 = 0
             wins_player1 = 0
@@ -87,7 +85,7 @@ def Tournament():
                     trainers[j].team = RandomTeamFromRoster(roster).get_team()
                     le.register(trainers[i])
                     le.register(trainers[j])
-                    # scontro
+                    # match
                     le.run(1)
                     wins_player0 += le.win_counts[trainers[i]]
                     wins_player1 += le.win_counts[trainers[j]]   
@@ -101,7 +99,7 @@ def Tournament():
             scores[j] += wins_player1
             print(f"Match Results: {trainers[i].competitor.battle_policy.name} won {wins_player0}, {trainers[j].competitor.battle_policy.name} won {wins_player1}")
 
-    # classifica ordinata
+    # sorted ranking
     ranking = sorted(zip(trainers, scores), key=lambda x: x[1], reverse=True)
     print("\nRanking tournament:\n")
     for i, (trainer, score) in enumerate(ranking, start=1):
