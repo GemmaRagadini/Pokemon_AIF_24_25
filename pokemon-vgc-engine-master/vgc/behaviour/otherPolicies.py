@@ -1,12 +1,6 @@
-import math
-import hashlib
-import numpy as np
-import random
 from typing import List
 from vgc.behaviour import evalFunctions
-from vgc.datatypes.Types import PkmStat, PkmType, WeatherCondition
-from vgc.datatypes.Objects import Pkm, GameState
-from vgc.datatypes.Constants import DEFAULT_PKM_N_MOVES, DEFAULT_PARTY_SIZE, TYPE_CHART_MULTIPLIER, DEFAULT_N_ACTIONS
+from vgc.datatypes.Constants import DEFAULT_N_ACTIONS
 from vgc.behaviour import BattlePolicy
 from copy import deepcopy
 
