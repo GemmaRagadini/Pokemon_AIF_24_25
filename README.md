@@ -29,4 +29,7 @@ then you can install the requirements needed to run the project using the comand
 2. python3 -m venv amb
 3. source amb/bin/activate
 4. export PYTHONPATH=$PYTHONPATH:<path to Pokemon_AIF_24_25/pokemon-vgc-engine-master> 
-      
+
+## Notebook 
+To stay within the page limit for the PDF, we have included many supporting functions in the `utils.py` file. 
+To see the more elegant functionality of the classes and functions, we recommend reviewing the code in the repository.
