@@ -24,8 +24,9 @@ you move to the directory
 
 %cd Pokemon_AIF_24_25/pokemon-vgc-engine-master
 
-then you can install the requirements needed to run the project using the comand
-
-1. python3 -m ve
-
+then you can install the requirements needed to run the project using the comand: 
+1. !pip install -r requirements.txt
+2. python3 -m venv amb
+3. source amb/bin/activate
+4. export PYTHONPATH=$PYTHONPATH:<path to Pokemon_AIF_24_25/pokemon-vgc-engine-master> 
       
